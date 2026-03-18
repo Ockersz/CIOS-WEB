@@ -29,11 +29,11 @@ import {
   TrendingUp,
   UserPlus,
 } from "lucide-react";
-import heroImage from "figma:asset/d89780a9d6e8f6f73ead4861c83cec8dc2d75dc6.png";
-import aboutImage from "figma:asset/90942495400356f7c45438d3ac22e381b6424f31.png";
-import clientsImage from "figma:asset/59e7371e83382b96ce3d92410fd77fc45e607be2.png";
-import certificationsImage from "figma:asset/5159d01704643f5912888e1e27c6c61c948555a6.png";
-import heroBackgroundImage from "figma:asset/7ca8818179e3f3b71f754641ebc815ec081dd833.png";
+import heroImage from "../../../assets/d89780a9d6e8f6f73ead4861c83cec8dc2d75dc6.png";
+import aboutImage from "../../../assets/90942495400356f7c45438d3ac22e381b6424f31.png";
+import clientsImage from "../../../assets/59e7371e83382b96ce3d92410fd77fc45e607be2.png";
+import certificationsImage from "../../../assets/5159d01704643f5912888e1e27c6c61c948555a6.png";
+import heroBackgroundImage from "../../../assets/7ca8818179e3f3b71f754641ebc815ec081dd833.png";
 
 export function Home() {
   const services = [

@@ -2,7 +2,7 @@ import { ImageWithFallback } from '../figma/ImageWithFallback';
 import { ChevronRight, Leaf, Recycle, Droplets, Shield, CheckCircle } from 'lucide-react';
 import { useParams, Link } from 'react-router';
 import { motion } from 'motion/react';
-import ciosLogo from 'figma:asset/6372cb420fc0690c19c4c9f66ad33b20d184313c.png';
+import ciosLogo from '../../../imports/cioslogo.svg';
 
 interface ServiceContent {
   id: string;

@@ -1,4 +1,3 @@
-import image_6372cb420fc0690c19c4c9f66ad33b20d184313c from "figma:asset/6372cb420fc0690c19c4c9f66ad33b20d184313c.png";
 import { Link, useLocation } from "react-router";
 import {
   Menu,
@@ -12,7 +11,6 @@ import {
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import ciosLogo from "../../imports/cioslogo.svg";
-import ciosLogoDark from "../../imports/ciosdark.svg";
 
 export function Navigation() {
   const [isOpen, setIsOpen] = useState(false);
@@ -85,9 +83,7 @@ export function Navigation() {
                     {/* CIOS Logo */}
 
                     <img
-                      src={
-                        image_6372cb420fc0690c19c4c9f66ad33b20d184313c
-                      }
+                      src={ciosLogo}
                       alt="CIOS"
                       className="w-24 h-24 object-contain"
                     />
@@ -194,9 +190,7 @@ export function Navigation() {
                 {/* CIOS Logo */}
                 <div className="flex justify-center">
                   <img
-                    src={
-                      image_6372cb420fc0690c19c4c9f66ad33b20d184313c
-                    }
+                    src={ciosLogo}
                     alt="CIOS"
                     className="w-16 h-16 object-contain"
                   />

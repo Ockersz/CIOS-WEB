@@ -1,7 +1,7 @@
 import { motion } from 'motion/react';
 import { useEffect, useState } from 'react';
-import sparkleGreen from 'figma:asset/186fecb6f99dd0a349dab9d69adf47db3588102f.png';
-import sparkleYellow from 'figma:asset/5a42da73b29b9b5b7267164be4ac390a51bd5917.png';
+import sparkleGreen from '../../assets/186fecb6f99dd0a349dab9d69adf47db3588102f.png';
+import sparkleYellow from '../../assets/5a42da73b29b9b5b7267164be4ac390a51bd5917.png';
 
 interface Sparkle {
   id: number;

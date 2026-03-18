@@ -1,9 +1,9 @@
 import { motion } from 'motion/react';
 import { useState } from 'react';
 import { Sparkles, Hand, LayoutGrid, Droplets } from 'lucide-react';
-import backgroundPattern from 'figma:asset/581d7eb1b818206890303d2b3a76c5414cdbbf5d.png';
-import beforeImage from 'figma:asset/373cecb1e82884e5333e7b3f0bbc95be03484f17.png';
-import afterImage from 'figma:asset/11216e21214150f3e7991c8dc0ef75882077e7c7.png';
+import backgroundPattern from '../../assets/581d7eb1b818206890303d2b3a76c5414cdbbf5d.png';
+import beforeImage from '../../assets/373cecb1e82884e5333e7b3f0bbc95be03484f17.png';
+import afterImage from '../../assets/11216e21214150f3e7991c8dc0ef75882077e7c7.png';
 
 export function BeforeAfter() {
   const [sliderPosition, setSliderPosition] = useState(50);

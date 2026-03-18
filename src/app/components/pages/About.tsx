@@ -17,7 +17,6 @@ import {
   Sparkles as SparklesIcon
 } from 'lucide-react';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
-import ciosLogo from 'figma:asset/6372cb420fc0690c19c4c9f66ad33b20d184313c.png';
 
 export function About() {
   const values = [

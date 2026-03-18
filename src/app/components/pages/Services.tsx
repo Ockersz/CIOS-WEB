@@ -1,10 +1,8 @@
-import image_8fea4c5ef9eb269dfb675b419c51c4d62a3cb246 from 'figma:asset/8fea4c5ef9eb269dfb675b419c51c4d62a3cb246.png'
-import image_94b666d9c50b2eedc24a1a945995ba83a4abfcff from 'figma:asset/94b666d9c50b2eedc24a1a945995ba83a4abfcff.png'
+import image_8fea4c5ef9eb269dfb675b419c51c4d62a3cb246 from '../../../assets/8fea4c5ef9eb269dfb675b419c51c4d62a3cb246.png';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
-import { Building2, GraduationCap, Heart, Bus, Shield, TreePine, Home, LucideIcon, Sparkles as SparklesIcon, Droplets, Leaf, Clock, ChevronRight } from 'lucide-react';
+import { Building2, GraduationCap, Heart, Bus, Shield, TreePine, Home, Sparkles as SparklesIcon, Droplets, Leaf, Clock, ChevronRight } from 'lucide-react';
 import { Link } from 'react-router';
 import { motion } from 'motion/react';
-import ciosLogo from 'figma:asset/6372cb420fc0690c19c4c9f66ad33b20d184313c.png';
 
 export function Services() {
   const services = [
