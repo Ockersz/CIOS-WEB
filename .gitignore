@@ -2,3 +2,4 @@
 /guidelines
 /dist
 /.vscode
+.pm2/

@@ -34,6 +34,8 @@ const app = express();
 const PORT = Number(process.env.PORT || 3001);
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const distDir = path.join(__dirname, "..", "dist");
+const indexHtmlPath = path.join(distDir, "index.html");
 const adminSessions = new Map();
 const SESSION_TTL_MS = 1000 * 60 * 60 * 8;
 
@@ -339,6 +341,20 @@ app.post(
     }
   },
 );
+
+app.use(express.static(distDir));
+
+app.get(/^(?!\/api(?:\/|$)).*/, (req, res, next) => {
+  if (req.method !== "GET") {
+    return next();
+  }
+
+  res.sendFile(indexHtmlPath, (error) => {
+    if (error) {
+      next(error);
+    }
+  });
+});
 
 app.use((error, _req, res, _next) => {
   console.error(error);

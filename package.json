@@ -5,9 +5,12 @@
   "type": "module",
   "scripts": {
     "build": "vite build",
+    "build:pm2": "npm run build && npm run pm2:reload",
     "dev": "concurrently -k \"npm:dev:server\" \"npm:dev:client\"",
     "dev:client": "vite",
     "dev:server": "node server/index.js",
+    "pm2:reload": "PM2_HOME=.pm2 npx pm2 startOrReload ecosystem.config.cjs --update-env",
+    "pm2:stop": "PM2_HOME=.pm2 npx pm2 delete cios-app",
     "seed": "node server/seed.js",
     "start": "node server/index.js"
   },
@@ -57,6 +60,7 @@
     "motion": "12.23.24",
     "mysql2": "^3.20.0",
     "next-themes": "0.4.6",
+    "pm2": "^6.0.14",
     "react-day-picker": "8.10.1",
     "react-dnd": "16.0.1",
     "react-dnd-html5-backend": "16.0.1",
