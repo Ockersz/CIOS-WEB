@@ -36,12 +36,41 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const distDir = path.join(__dirname, "..", "dist");
 const indexHtmlPath = path.join(distDir, "index.html");
+const uploadsDir = path.join(__dirname, "..", "uploads");
 const adminSessions = new Map();
 const SESSION_TTL_MS = 1000 * 60 * 60 * 8;
 
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: "100mb" }));
-app.use("/uploads", express.static(path.join(__dirname, "..", "uploads")));
+app.use(
+  "/uploads",
+  express.static(uploadsDir, {
+    etag: true,
+    immutable: true,
+    maxAge: "1y",
+  }),
+);
+app.use(
+  "/assets",
+  express.static(path.join(distDir, "assets"), {
+    etag: true,
+    immutable: true,
+    maxAge: "1y",
+  }),
+);
+app.use(
+  express.static(distDir, {
+    etag: true,
+    lastModified: true,
+    setHeaders: (res, filePath) => {
+      if (filePath.endsWith(".html")) {
+        res.setHeader("Cache-Control", "no-cache");
+      } else {
+        res.setHeader("Cache-Control", "public, max-age=3600");
+      }
+    },
+  }),
+);
 
 function createAdminSession(username) {
   const token = `${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`;
@@ -342,13 +371,12 @@ app.post(
   },
 );
 
-app.use(express.static(distDir));
-
 app.get(/^(?!\/api(?:\/|$)).*/, (req, res, next) => {
   if (req.method !== "GET") {
     return next();
   }
 
+  res.setHeader("Cache-Control", "no-cache");
   res.sendFile(indexHtmlPath, (error) => {
     if (error) {
       next(error);
