@@ -225,6 +225,23 @@ export async function getPool() {
   return pool;
 }
 
+export function getDatabaseConfig() {
+  return {
+    dbName: DB_NAME,
+    host: connectionConfig.host,
+    port: connectionConfig.port,
+    user: connectionConfig.user,
+    password: connectionConfig.password,
+  };
+}
+
+export async function resetDatabasePool() {
+  if (pool) {
+    await pool.end();
+    pool = undefined;
+  }
+}
+
 export async function initializeDatabase() {
   const db = await getPool();
   await ensureUploadDirectory();

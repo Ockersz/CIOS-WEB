@@ -14,7 +14,9 @@ import {
   createAdminService,
   deleteAdminBlogPost,
   deleteAdminService,
+  exportAdminBackup,
   getAdminBootstrap,
+  importAdminBackup,
   importExistingAdminImages,
   renameAdminImage,
   reorderAdminBlogPosts,
@@ -29,7 +31,7 @@ import { getIconComponent, iconMap, iconOptions } from "../../lib/iconMap";
 
 const TOKEN_KEY = "cios_admin_token";
 
-type AdminSection = "global" | "pages" | "services" | "blog" | "images" | "password";
+type AdminSection = "global" | "pages" | "services" | "blog" | "images" | "backups" | "password";
 
 function normalizeClientItems(
   items: Array<string | { name?: string; logo?: string }> | undefined,
@@ -1014,6 +1016,7 @@ export function Admin() {
   const [selectedPostSlug, setSelectedPostSlug] = useState("");
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [savingOrder, setSavingOrder] = useState<"services" | "blog" | null>(null);
+  const [backupBusy, setBackupBusy] = useState<"export" | "import" | null>(null);
   const [iconPicker, setIconPicker] = useState<{
     title: string;
     currentValue: string;
@@ -1030,26 +1033,30 @@ export function Admin() {
     confirmPassword: "",
   });
 
+  function applyBootstrapData(data: AdminBootstrap) {
+    setBootstrap(data);
+    setSettingsDraft({
+      ...data.settings,
+      clients: {
+        ...data.settings.clients,
+        items: normalizeClientItems(data.settings.clients?.items),
+      },
+    });
+    setPagesDraft(data.pages);
+    setServicesDraft(data.services);
+    setPostsDraft(data.blogPosts);
+    setImageAssetsDraft(data.imageAssets || []);
+    setSelectedPageSlug((current) => current || data.pages[0]?.slug || "");
+    setSelectedServiceId((current) => current || data.services[0]?.id || "");
+    setSelectedPostSlug((current) => current || data.blogPosts[0]?.slug || "");
+  }
+
   async function refreshAdminData(activeToken = token) {
     if (!activeToken) return;
     setLoading(true);
     try {
       const data = await getAdminBootstrap(activeToken);
-      setBootstrap(data);
-      setSettingsDraft({
-        ...data.settings,
-        clients: {
-          ...data.settings.clients,
-          items: normalizeClientItems(data.settings.clients?.items),
-        },
-      });
-      setPagesDraft(data.pages);
-      setServicesDraft(data.services);
-      setPostsDraft(data.blogPosts);
-      setImageAssetsDraft(data.imageAssets || []);
-      setSelectedPageSlug((current) => current || data.pages[0]?.slug || "");
-      setSelectedServiceId((current) => current || data.services[0]?.id || "");
-      setSelectedPostSlug((current) => current || data.blogPosts[0]?.slug || "");
+      applyBootstrapData(data);
       setAuthError(null);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to load admin data";
@@ -1210,6 +1217,7 @@ export function Admin() {
               ["services", "Services"],
               ["blog", "Blog Posts"],
               ["images", "Image Library"],
+              ["backups", "Backups"],
               ["password", "Change Password"],
             ].map(([value, label]) => (
               <button
@@ -2193,6 +2201,81 @@ export function Admin() {
                   </div>
                 ))}
               </div>
+            </div>
+          ) : null}
+
+          {section === "backups" ? (
+            <div className="space-y-6">
+              <SectionCard
+                title="Export Backup"
+                description="Create a zip archive containing the SQL dump and all uploaded images."
+              >
+                <button
+                  type="button"
+                  disabled={!token || backupBusy !== null}
+                  onClick={async () => {
+                    if (!token) return;
+                    setBackupBusy("export");
+                    try {
+                      const backup = await exportAdminBackup(token);
+                      const url = URL.createObjectURL(backup.blob);
+                      const link = document.createElement("a");
+                      link.href = url;
+                      link.download = backup.fileName;
+                      document.body.appendChild(link);
+                      link.click();
+                      link.remove();
+                      URL.revokeObjectURL(url);
+                      flashStatus("Backup exported");
+                    } catch (error) {
+                      alert(error instanceof Error ? error.message : "Failed to export backup");
+                    } finally {
+                      setBackupBusy(null);
+                    }
+                  }}
+                  className="px-6 py-3 rounded-2xl bg-[#3d1810] text-white disabled:opacity-60"
+                >
+                  {backupBusy === "export" ? "Preparing Backup..." : "Export Backup Zip"}
+                </button>
+              </SectionCard>
+
+              <SectionCard
+                title="Import Backup"
+                description="Restore the SQL dump and uploaded images from a backup zip. This will overwrite current CMS data and image library contents."
+              >
+                <label className="inline-flex px-6 py-3 rounded-2xl bg-[#e8d0aa] text-[#2c1d12] cursor-pointer">
+                  {backupBusy === "import" ? "Importing Backup..." : "Choose Backup Zip"}
+                  <input
+                    type="file"
+                    accept=".zip,application/zip"
+                    className="hidden"
+                    disabled={!token || backupBusy !== null}
+                    onChange={async (event) => {
+                      const input = event.currentTarget;
+                      const file = input.files?.[0];
+                      if (!file || !token) return;
+                      if (!window.confirm("Importing a backup will replace the current database content and uploaded images. Continue?")) {
+                        input.value = "";
+                        return;
+                      }
+                      setBackupBusy("import");
+                      try {
+                        const restored = await importAdminBackup(token, file);
+                        applyBootstrapData(restored);
+                        flashStatus("Backup imported");
+                      } catch (error) {
+                        alert(error instanceof Error ? error.message : "Failed to import backup");
+                      } finally {
+                        setBackupBusy(null);
+                        input.value = "";
+                      }
+                    }}
+                  />
+                </label>
+                <p className="text-sm text-[#6a5a49] mt-4">
+                  Expected archive contents: <code>backup.sql</code>, <code>manifest.json</code>, and an <code>uploads/</code> folder.
+                </p>
+              </SectionCard>
             </div>
           ) : null}
 

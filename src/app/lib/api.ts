@@ -346,3 +346,52 @@ export async function importExistingAdminImages(token: string) {
     headers: { Authorization: `Bearer ${token}` },
   });
 }
+
+export async function exportAdminBackup(token: string) {
+  const response = await fetch(`${API_BASE}/admin/backups/export`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!response.ok) {
+    let message = `Request failed with status ${response.status}`;
+    try {
+      const body = await response.json();
+      if (body?.message) message = body.message;
+    } catch {
+      // Ignore body parsing failures and keep the fallback message.
+    }
+    throw new Error(message);
+  }
+
+  return {
+    blob: await response.blob(),
+    fileName:
+      response.headers
+        .get("Content-Disposition")
+        ?.match(/filename="([^"]+)"/)?.[1] || "cios-backup.zip",
+  };
+}
+
+export async function importAdminBackup(token: string, file: File) {
+  const response = await fetch(`${API_BASE}/admin/backups/import-binary`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": file.type || "application/zip",
+    },
+    body: file,
+  });
+
+  if (!response.ok) {
+    let message = `Request failed with status ${response.status}`;
+    try {
+      const body = await response.json();
+      if (body?.message) message = body.message;
+    } catch {
+      // Ignore body parsing failures and keep the fallback message.
+    }
+    throw new Error(message);
+  }
+
+  return response.json() as Promise<AdminBootstrap>;
+}

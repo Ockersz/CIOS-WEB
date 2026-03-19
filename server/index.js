@@ -2,6 +2,7 @@ import cors from "cors";
 import express from "express";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { exportCmsBackup, importCmsBackupZip } from "./backup.js";
 import {
   createBlogPost,
   createService,
@@ -314,6 +315,30 @@ app.post("/api/admin/images/import-existing", requireAdmin, async (_req, res, ne
     next(error);
   }
 });
+
+app.get("/api/admin/backups/export", requireAdmin, async (_req, res, next) => {
+  try {
+    const backup = await exportCmsBackup();
+    res.setHeader("Content-Type", backup.contentType);
+    res.setHeader("Content-Disposition", `attachment; filename="${backup.fileName}"`);
+    res.send(backup.buffer);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post(
+  "/api/admin/backups/import-binary",
+  requireAdmin,
+  express.raw({ type: ["application/zip", "application/octet-stream"], limit: "500mb" }),
+  async (req, res, next) => {
+    try {
+      res.json(await importCmsBackupZip(req.body));
+    } catch (error) {
+      next(error);
+    }
+  },
+);
 
 app.use((error, _req, res, _next) => {
   console.error(error);
