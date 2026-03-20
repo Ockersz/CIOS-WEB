@@ -2,6 +2,33 @@
 
 :root {
   --font-size: 16px;
+  --font-body: "Manrope", sans-serif;
+  --font-display: "Cormorant Garamond", serif;
+  --brand-brown: #2f120c;
+  --brand-brown-soft: #4a2118;
+  --brand-brown-overlay: rgb(47 18 12 / 0.6);
+  --brand-brown-muted: rgb(47 18 12 / 0.8);
+  --brand-accent: #f4c430;
+  --brand-accent-hover: #e5b520;
+  --brand-accent-soft: rgb(244 196 48 / 0.2);
+  --brand-accent-strong: rgb(244 196 48 / 0.9);
+  --brand-canvas: #f7f1e7;
+  --brand-canvas-soft: #fbf7f1;
+  --brand-surface: #fffaf2;
+  --brand-surface-soft: #ffffff;
+  --brand-border: #d6c5af;
+  --brand-border-strong: #c4aa8c;
+  --brand-text: #26170f;
+  --brand-text-muted: #674f40;
+  --brand-text-soft: #8b735f;
+  --brand-secondary-fill: #f1df9f;
+  --brand-secondary-fill-hover: #ebd27f;
+  --brand-eco: #2f7a4a;
+  --brand-eco-hover: #296c41;
+  --brand-eco-soft: rgb(47 122 74 / 0.18);
+  --brand-eco-strong: rgb(47 122 74 / 0.95);
+  --brand-eco-text: #204e32;
+  --brand-footer-background: #210d09;
   --background: #ffffff;
   --foreground: oklch(0.145 0 0);
   --card: #ffffff;
@@ -126,6 +153,9 @@
 
   body {
     @apply bg-background text-foreground;
+    font-family: var(--font-body);
+    letter-spacing: -0.01em;
+    line-height: 1.65;
   }
 
   /**
@@ -138,27 +168,34 @@
   }
 
   h1 {
+    font-family: var(--font-display);
     font-size: var(--text-2xl);
-    font-weight: var(--font-weight-medium);
-    line-height: 1.5;
+    font-weight: 600;
+    line-height: 1.08;
+    letter-spacing: -0.03em;
   }
 
   h2 {
+    font-family: var(--font-display);
     font-size: var(--text-xl);
-    font-weight: var(--font-weight-medium);
-    line-height: 1.5;
+    font-weight: 600;
+    line-height: 1.1;
+    letter-spacing: -0.025em;
   }
 
   h3 {
+    font-family: var(--font-display);
     font-size: var(--text-lg);
-    font-weight: var(--font-weight-medium);
-    line-height: 1.5;
+    font-weight: 600;
+    line-height: 1.14;
+    letter-spacing: -0.02em;
   }
 
   h4 {
+    font-family: var(--font-display);
     font-size: var(--text-base);
-    font-weight: var(--font-weight-medium);
-    line-height: 1.5;
+    font-weight: 600;
+    line-height: 1.2;
   }
 
   label {
@@ -168,14 +205,75 @@
   }
 
   button {
+    font-family: var(--font-body);
     font-size: var(--text-base);
-    font-weight: var(--font-weight-medium);
+    font-weight: 700;
     line-height: 1.5;
   }
 
-  input {
+  input,
+  textarea,
+  select {
+    font-family: var(--font-body);
     font-size: var(--text-base);
     font-weight: var(--font-weight-normal);
     line-height: 1.5;
+  }
+
+  p,
+  li {
+    line-height: 1.72;
+  }
+}
+
+@layer components {
+  .hero-title {
+    font-family: var(--font-display);
+    font-weight: 600;
+    letter-spacing: -0.04em;
+    line-height: 0.98;
+    text-wrap: balance;
+  }
+
+  .section-title {
+    font-family: var(--font-display);
+    font-weight: 600;
+    letter-spacing: -0.03em;
+    line-height: 1.03;
+    text-wrap: balance;
+  }
+
+  .card-title {
+    font-family: var(--font-display);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1.12;
+  }
+
+  .eyebrow-label {
+    font-family: var(--font-body);
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+
+  .body-copy {
+    font-family: var(--font-body);
+    line-height: 1.8;
+    letter-spacing: -0.01em;
+  }
+
+  .stat-number {
+    font-family: var(--font-display);
+    font-weight: 700;
+    letter-spacing: -0.05em;
+    line-height: 0.94;
+  }
+
+  .button-text {
+    font-family: var(--font-body);
+    font-weight: 800;
+    letter-spacing: 0.01em;
   }
 }

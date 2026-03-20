@@ -12,6 +12,16 @@ export interface CmsPage<T = any> {
 }
 
 export interface SiteSettings {
+  styles: {
+    brandBrown: string;
+    brandAccent: string;
+    brandCanvas: string;
+    brandSurface: string;
+    typographyPreset?: string;
+    ecoGreen?: string;
+    footerBackground?: string;
+    heroOverlay?: string;
+  };
   business: {
     name: string;
     shortDescription: string;
@@ -59,6 +69,7 @@ export interface ServiceSummary {
   heroImage: string;
   detailImage: string;
   isEcoFriendly: boolean;
+  showOnHome?: boolean;
 }
 
 export interface ServiceDetail extends ServiceSummary {

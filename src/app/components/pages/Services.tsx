@@ -1,10 +1,12 @@
 import image_8fea4c5ef9eb269dfb675b419c51c4d62a3cb246 from '../../../assets/8fea4c5ef9eb269dfb675b419c51c4d62a3cb246.png';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
+import { SiteIcon } from '../SiteIcon';
 import { Building2, ChevronRight, Clock, Droplets, GraduationCap, Heart, Home, Leaf, Shield, Sparkles as SparklesIcon, TreePine, Bus } from 'lucide-react';
 import { Link } from 'react-router';
 import { motion } from 'motion/react';
 import { useCmsPage, useServices } from '../../lib/api';
-import { iconMap } from '../../lib/iconMap';
+import { Seo } from '../Seo';
+import { buildPageTitle, trimSeoDescription } from '../../lib/seo';
 
 const serviceIcons: Record<string, any> = {
   commercial: Building2,
@@ -24,6 +26,11 @@ export function Services() {
 
   return (
     <div className="w-full">
+      <Seo
+        title={buildPageTitle('Cleaning Services')}
+        description={trimSeoDescription(page?.heroSubtitle || page?.heroDescription)}
+        path="/services"
+      />
       <section className="relative text-white py-24 md:py-32 overflow-hidden">
         <div className="absolute inset-0">
           <ImageWithFallback
@@ -41,29 +48,28 @@ export function Services() {
             </div>
 
             <div className="mb-4">
-              <p className="text-2xl md:text-3xl text-[#F4C430] italic font-light mb-2">Save Our Planet</p>
+              <p className="eyebrow-label text-[var(--brand-accent)] mb-3">Save Our Planet</p>
               <h1 className="text-3xl md:text-5xl lg:text-6xl mb-3">
-                <span className="text-[#F4C430]">{page?.heroTitle}</span>
+                <span className="hero-title text-5xl md:text-6xl lg:text-7xl text-[var(--brand-accent)]">{page?.heroTitle}</span>
               </h1>
-              <p className="text-xl md:text-2xl text-gray-200 uppercase tracking-wide">{page?.heroSubtitle}</p>
+              <p className="body-copy text-xl md:text-2xl text-gray-200">{page?.heroSubtitle}</p>
             </div>
           </motion.div>
 
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="mt-16">
-            <h2 className="text-3xl md:text-4xl text-center mb-8 text-[#F4C430]">{page?.heroDescription}</h2>
+            <h2 className="section-title text-4xl md:text-5xl text-center mb-8 text-[var(--brand-accent)]">{page?.heroDescription}</h2>
 
             <div className="flex flex-wrap justify-center gap-4 mb-12">
               {features.map((feature: any) => {
-                const Icon = iconMap[feature.icon as keyof typeof iconMap] || SparklesIcon;
                 return (
                   <div
                     key={feature.title}
-                    className="bg-gradient-to-r from-[#F4C430]/90 to-[#e5b520]/90 backdrop-blur-sm px-6 py-4 rounded-full flex items-center gap-3 border-2 border-[#F4C430]"
+                    className="bg-[var(--brand-accent-strong)] backdrop-blur-sm px-6 py-4 rounded-full flex items-center gap-3 border-2 border-[var(--brand-accent)]"
                   >
-                    <Icon className="w-6 h-6 text-[#3D1810]" />
+                    <SiteIcon name={feature.icon} fallback={SparklesIcon} className="w-6 h-6 text-[var(--brand-brown)]" />
                     <div className="text-left">
-                      <div className="font-semibold text-[#3D1810] text-sm">{feature.title}</div>
-                      <div className="text-xs text-[#3D1810]/80">{feature.description}</div>
+                      <div className="card-title text-[var(--brand-brown)] text-base">{feature.title}</div>
+                      <div className="body-copy text-xs text-[var(--brand-brown-muted)]">{feature.description}</div>
                     </div>
                   </div>
                 );
@@ -75,7 +81,7 @@ export function Services() {
 
       <section className="py-20 bg-gradient-to-b from-white to-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
             {(services || []).map((service, index) => {
               const Icon = serviceIcons[service.id] || Building2;
               return (
@@ -87,26 +93,45 @@ export function Services() {
                   transition={{ delay: index * 0.1 }}
                 >
                   <Link to={`/services/${service.id}`} className="block group h-full">
-                    <div className="bg-gradient-to-br from-[#F4C430]/10 to-white p-6 rounded-3xl shadow-lg hover:shadow-2xl transition-all h-full flex flex-col border-4 border-[#F4C430]/30 hover:border-emerald-500 relative overflow-hidden">
-                      <div className="relative h-48 mb-4 rounded-2xl overflow-hidden">
+                    <div className="relative h-[360px] rounded-[28px] overflow-hidden bg-white shadow-lg transition-all duration-500 border border-[#eadfcb] group-hover:-translate-y-2 group-hover:shadow-2xl">
+                      <div className="absolute inset-0">
                         <ImageWithFallback
                           src={service.image}
                           alt={service.title}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                         />
-                        <div className="absolute bottom-3 right-3 w-16 h-16 bg-gradient-to-br from-emerald-600 to-emerald-800 rounded-full flex items-center justify-center border-4 border-[#F4C430] shadow-xl">
-                          <Icon className="w-8 h-8 text-white" />
+                      </div>
+
+                      <div className="absolute inset-0 bg-gradient-to-t from-[#111827]/20 via-transparent to-white/10 group-hover:from-[#102418]/85 group-hover:via-[#102418]/50 group-hover:to-[#102418]/15 transition-colors duration-500" />
+
+                      {service.isEcoFriendly && (
+                        <div className="absolute top-5 left-5 z-20 inline-flex items-center gap-2 rounded-full bg-[var(--brand-eco-strong)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-white shadow-lg backdrop-blur-sm">
+                          <Leaf className="w-4 h-4" />
+                          <span>Green Initiative</span>
                         </div>
-                      </div>
+                      )}
 
-                      <div className="flex-grow">
-                        <h3 className="text-2xl font-bold mb-3 text-gray-900">{service.title}</h3>
-                        <p className="text-gray-600 leading-relaxed">{service.description}</p>
-                      </div>
+                      <div className="absolute inset-x-0 bottom-0">
+                        <motion.div
+                          initial={false}
+                          className="relative bg-white/96 backdrop-blur-md shadow-xl overflow-visible"
+                        >
+                          <div className="absolute -top-7 right-5 w-14 h-14 rounded-full bg-[#FFD24D] border-[5px] border-white shadow-lg flex items-center justify-center z-20 transition-transform duration-500 group-hover:scale-110 group-hover:rotate-6">
+                            <Icon className="w-6 h-6 text-[#1f2a37]" />
+                          </div>
 
-                      <div className="mt-4 flex items-center gap-2 text-emerald-600">
-                        <Leaf className="w-5 h-5" />
-                        <span className="text-sm font-medium">Eco-Friendly Service</span>
+                          <div className="px-6 pt-8 pb-5">
+                            <h3 className="card-title pr-14 text-[1.9rem] text-[#0f172a] transition-transform duration-500 group-hover:-translate-y-1">
+                              {service.title}
+                            </h3>
+
+                            <div className="mt-3 overflow-hidden">
+                              <p className="body-copy text-sm text-slate-600 max-h-0 opacity-0 -translate-y-3 transition-all duration-500 group-hover:max-h-40 group-hover:opacity-100 group-hover:translate-y-0">
+                                {service.description}
+                              </p>
+                            </div>
+                          </div>
+                        </motion.div>
                       </div>
                     </div>
                   </Link>
@@ -118,7 +143,7 @@ export function Services() {
       </section>
 
       {cta && (
-        <section className="py-20 bg-gradient-to-br from-emerald-600 via-emerald-700 to-emerald-800 text-white relative overflow-hidden">
+        <section className="py-20 bg-[var(--brand-eco)] text-white relative overflow-hidden">
           <div className="absolute inset-0 opacity-10">
             <div className="absolute top-10 left-10 w-64 h-64 bg-white rounded-full blur-3xl"></div>
             <div className="absolute bottom-10 right-10 w-96 h-96 bg-[#F4C430] rounded-full blur-3xl"></div>
@@ -126,12 +151,12 @@ export function Services() {
 
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
             <div className="flex justify-center mb-6">
-              <Leaf className="w-16 h-16 text-[#F4C430]" />
+              <Leaf className="w-16 h-16 text-[var(--brand-accent)]" />
             </div>
-            <h2 className="text-4xl md:text-5xl font-bold mb-6">{cta.title}</h2>
-            <p className="text-xl mb-8 text-emerald-50">{cta.description}</p>
+            <h2 className="section-title text-4xl md:text-6xl mb-6">{cta.title}</h2>
+            <p className="body-copy text-xl mb-8 text-white/88">{cta.description}</p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link to="/get-quote" className="inline-flex items-center justify-center px-10 py-4 bg-[#F4C430] text-black rounded-full hover:bg-[#e5b520] transition-all transform hover:scale-105 font-semibold shadow-xl">
+              <Link to="/get-quote" className="inline-flex items-center justify-center px-10 py-4 bg-[var(--brand-accent)] text-black rounded-full hover:bg-[var(--brand-accent-hover)] transition-all transform hover:scale-105 font-semibold shadow-xl">
                 {cta.primaryLabel}
                 <ChevronRight className="ml-2 w-5 h-5" />
               </Link>

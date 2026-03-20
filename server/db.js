@@ -136,6 +136,36 @@ function buildContactCards(settings) {
   ];
 }
 
+function normalizeContactCards(cards, fallbackSettings) {
+  const fallbackCards = buildContactCards(fallbackSettings);
+  if (!Array.isArray(cards) || cards.length === 0) {
+    return fallbackCards;
+  }
+
+  return cards.map((card, index) => ({
+    icon: String(card?.icon || fallbackCards[index]?.icon || "MapPin"),
+    title: String(card?.title || fallbackCards[index]?.title || `Contact Card ${index + 1}`),
+    details: Array.isArray(card?.details)
+      ? card.details.map((detail) => String(detail || "")).filter(Boolean)
+      : fallbackCards[index]?.details || [],
+  }));
+}
+
+function normalizeHexColor(value, fallback) {
+  const candidate = String(value || "").trim();
+  return /^#([0-9a-fA-F]{6})$/.test(candidate) ? candidate.toLowerCase() : fallback;
+}
+
+function normalizeOptionalHexColor(value) {
+  const candidate = String(value || "").trim();
+  return /^#([0-9a-fA-F]{6})$/.test(candidate) ? candidate.toLowerCase() : "";
+}
+
+function normalizeTypographyPreset(value) {
+  const allowed = new Set(["classic-editorial", "modern-luxury", "heritage-formal"]);
+  return allowed.has(String(value || "")) ? String(value) : "classic-editorial";
+}
+
 function normalizeSiteSettings(rawValue) {
   const defaults = seedContent.siteSettings;
   const raw = rawValue || {};
@@ -146,6 +176,18 @@ function normalizeSiteSettings(rawValue) {
 
   if (raw.business) {
     const normalized = {
+      styles: {
+        ...defaults.styles,
+        ...raw.styles,
+        brandBrown: normalizeHexColor(raw.styles?.brandBrown, defaults.styles.brandBrown),
+        brandAccent: normalizeHexColor(raw.styles?.brandAccent, defaults.styles.brandAccent),
+        brandCanvas: normalizeHexColor(raw.styles?.brandCanvas, defaults.styles.brandCanvas),
+        brandSurface: normalizeHexColor(raw.styles?.brandSurface, defaults.styles.brandSurface),
+        typographyPreset: normalizeTypographyPreset(raw.styles?.typographyPreset),
+        ecoGreen: normalizeOptionalHexColor(raw.styles?.ecoGreen),
+        footerBackground: normalizeOptionalHexColor(raw.styles?.footerBackground),
+        heroOverlay: normalizeOptionalHexColor(raw.styles?.heroOverlay),
+      },
       business: { ...defaults.business, ...raw.business },
       footer: {
         ...defaults.footer,
@@ -166,11 +208,22 @@ function normalizeSiteSettings(rawValue) {
 
     return {
       ...normalized,
-      contactCards: buildContactCards(normalized),
+      contactCards: normalizeContactCards(raw.contactCards, normalized),
     };
   }
 
   const migrated = {
+    styles: {
+      ...defaults.styles,
+      brandBrown: normalizeHexColor(raw.brandBrown, defaults.styles.brandBrown),
+      brandAccent: normalizeHexColor(raw.brandAccent, defaults.styles.brandAccent),
+      brandCanvas: normalizeHexColor(raw.brandCanvas, defaults.styles.brandCanvas),
+      brandSurface: normalizeHexColor(raw.brandSurface, defaults.styles.brandSurface),
+      typographyPreset: normalizeTypographyPreset(raw.typographyPreset),
+      ecoGreen: normalizeOptionalHexColor(raw.ecoGreen),
+      footerBackground: normalizeOptionalHexColor(raw.footerBackground),
+      heroOverlay: normalizeOptionalHexColor(raw.heroOverlay),
+    },
     business: {
       ...defaults.business,
       name: raw.businessName || defaults.business.name,
@@ -199,7 +252,7 @@ function normalizeSiteSettings(rawValue) {
       ...defaults.clients,
       items: normalizeClientItems(raw.clients?.items || defaults.clients.items),
     },
-    contactCards: buildContactCards(migrated),
+    contactCards: normalizeContactCards(raw.contactCards, migrated),
   };
 }
 
@@ -275,6 +328,7 @@ export async function initializeDatabase() {
       hero_image VARCHAR(500),
       detail_image VARCHAR(500),
       is_eco_friendly BOOLEAN DEFAULT TRUE,
+      show_on_home BOOLEAN DEFAULT TRUE,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     );
@@ -328,6 +382,7 @@ export async function initializeDatabase() {
   `);
 
   await ensureColumnExists(db, "services", "sort_order", "INT NOT NULL DEFAULT 0");
+  await ensureColumnExists(db, "services", "show_on_home", "BOOLEAN DEFAULT TRUE");
   await ensureServiceSortOrder(db);
 
   await ensureSiteSettings(db);
@@ -397,8 +452,8 @@ async function seedIfEmpty(db) {
 
   for (const service of seedContent.services) {
     await db.query(
-      `INSERT INTO services (id, label, title, description, sort_order, image, hero_image, detail_image, is_eco_friendly)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO services (id, label, title, description, sort_order, image, hero_image, detail_image, is_eco_friendly, show_on_home)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         service.id,
         service.label,
@@ -409,6 +464,7 @@ async function seedIfEmpty(db) {
         service.heroImage,
         service.detailImage,
         service.isEcoFriendly ? 1 : 0,
+        service.showOnHome === false ? 0 : 1,
       ],
     );
 
@@ -478,7 +534,7 @@ export async function getPageBySlug(slug) {
 export async function getServices() {
   const db = await getPool();
   const [rows] = await db.query(
-    `SELECT id, label, title, description, sort_order, image, hero_image, detail_image, is_eco_friendly
+    `SELECT id, label, title, description, sort_order, image, hero_image, detail_image, is_eco_friendly, show_on_home
      FROM services ORDER BY sort_order ASC, title ASC, id ASC`,
   );
 
@@ -492,13 +548,14 @@ export async function getServices() {
     heroImage: service.hero_image,
     detailImage: service.detail_image,
     isEcoFriendly: Boolean(service.is_eco_friendly),
+    showOnHome: service.show_on_home !== 0,
   }));
 }
 
 export async function getServiceById(id) {
   const db = await getPool();
   const [services] = await db.query(
-    `SELECT id, label, title, description, sort_order, image, hero_image, detail_image, is_eco_friendly
+    `SELECT id, label, title, description, sort_order, image, hero_image, detail_image, is_eco_friendly, show_on_home
      FROM services WHERE id = ? LIMIT 1`,
     [id],
   );
@@ -521,6 +578,7 @@ export async function getServiceById(id) {
     heroImage: service.hero_image,
     detailImage: service.detail_image,
     isEcoFriendly: Boolean(service.is_eco_friendly),
+    showOnHome: service.show_on_home !== 0,
     items,
   };
 }
@@ -588,7 +646,7 @@ export async function getAllPages() {
 export async function getAllServicesWithItems() {
   const db = await getPool();
   const [services] = await db.query(
-    `SELECT id, label, title, description, sort_order, image, hero_image, detail_image, is_eco_friendly
+    `SELECT id, label, title, description, sort_order, image, hero_image, detail_image, is_eco_friendly, show_on_home
      FROM services ORDER BY sort_order ASC, title ASC, id ASC`,
   );
 
@@ -609,6 +667,7 @@ export async function getAllServicesWithItems() {
       heroImage: service.hero_image,
       detailImage: service.detail_image,
       isEcoFriendly: Boolean(service.is_eco_friendly),
+      showOnHome: service.show_on_home !== 0,
       items,
     });
   }
@@ -679,8 +738,8 @@ export async function updatePage(slug, page) {
 export async function createService(service) {
   const db = await getPool();
   await db.query(
-    `INSERT INTO services (id, label, title, description, sort_order, image, hero_image, detail_image, is_eco_friendly)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO services (id, label, title, description, sort_order, image, hero_image, detail_image, is_eco_friendly, show_on_home)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       service.id,
       service.label,
@@ -691,6 +750,7 @@ export async function createService(service) {
       service.heroImage,
       service.detailImage,
       service.isEcoFriendly ? 1 : 0,
+      service.showOnHome === false ? 0 : 1,
     ],
   );
 
@@ -702,7 +762,7 @@ export async function updateService(serviceId, service) {
   const db = await getPool();
   await db.query(
     `UPDATE services
-     SET label = ?, title = ?, description = ?, sort_order = ?, image = ?, hero_image = ?, detail_image = ?, is_eco_friendly = ?
+     SET label = ?, title = ?, description = ?, sort_order = ?, image = ?, hero_image = ?, detail_image = ?, is_eco_friendly = ?, show_on_home = ?
      WHERE id = ?`,
     [
       service.label,
@@ -713,6 +773,7 @@ export async function updateService(serviceId, service) {
       service.heroImage,
       service.detailImage,
       service.isEcoFriendly ? 1 : 0,
+      service.showOnHome === false ? 0 : 1,
       serviceId,
     ],
   );

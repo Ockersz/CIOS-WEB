@@ -3,11 +3,14 @@ import { ChevronRight, Leaf, Recycle, Droplets, Shield, CheckCircle } from 'luci
 import { useParams, Link } from 'react-router';
 import { motion } from 'motion/react';
 import ciosLogo from '../../../imports/cioslogo.svg';
-import { useService } from '../../lib/api';
+import { useService, useSiteSettings } from '../../lib/api';
+import { Seo } from '../Seo';
+import { buildPageTitle, createServiceStructuredData, trimSeoDescription } from '../../lib/seo';
 
 export function ServiceDetail() {
   const { serviceId } = useParams<{ serviceId: string }>();
   const { data: service, loading } = useService(serviceId);
+  const { data: settings } = useSiteSettings();
 
   if (loading && !service) {
     return <div className="w-full min-h-screen flex items-center justify-center">Loading service...</div>;
@@ -18,7 +21,7 @@ export function ServiceDetail() {
       <div className="w-full min-h-screen flex items-center justify-center bg-gradient-to-b from-gray-50 to-white">
         <div className="text-center">
           <h1 className="text-4xl mb-4 text-gray-900">Service Not Found</h1>
-          <Link to="/services" className="text-emerald-600 hover:underline text-lg font-medium">
+          <Link to="/services" className="text-[var(--brand-eco)] hover:underline text-lg font-medium">
             Back to Services
           </Link>
         </div>
@@ -28,10 +31,17 @@ export function ServiceDetail() {
 
   return (
     <div className="w-full">
+      <Seo
+        title={buildPageTitle(service?.title || 'Service Details', settings)}
+        description={trimSeoDescription(service?.description)}
+        path={`/services/${serviceId || ''}`}
+        image={service?.heroImage || service?.image}
+        structuredData={createServiceStructuredData(service, settings, `/services/${serviceId || ''}`)}
+      />
       <section className="relative text-white py-24 md:py-32 overflow-hidden">
         <div className="absolute inset-0">
           <ImageWithFallback src={service.heroImage} alt={service.title} className="w-full h-full object-cover" />
-          <div className="absolute inset-0 bg-gradient-to-b from-emerald-900/80 via-emerald-800/70 to-emerald-900/80"></div>
+          <div className="absolute inset-0 bg-[var(--brand-brown-overlay)]"></div>
         </div>
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
@@ -40,10 +50,12 @@ export function ServiceDetail() {
               <img src={ciosLogo} alt="CIOS" className="w-24 h-24 object-contain" />
             </div>
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-4">{service.title}</h1>
-            <div className="inline-flex items-center gap-2 bg-[#F4C430] text-black px-6 py-3 rounded-full font-semibold">
-              <Leaf className="w-5 h-5" />
-              <span>ECO-FRIENDLY SERVICE</span>
-            </div>
+            {service.isEcoFriendly && (
+                <div className="inline-flex items-center gap-2 bg-[var(--brand-accent)] text-black px-6 py-3 rounded-full font-semibold">
+                <Leaf className="w-5 h-5" />
+                <span>GREEN INITIATIVE</span>
+              </div>
+            )}
           </motion.div>
         </div>
       </section>
@@ -54,48 +66,54 @@ export function ServiceDetail() {
             <motion.div initial={{ opacity: 0, x: -20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }}>
               <p className="text-gray-700 leading-relaxed text-lg mb-8">{service.description}</p>
 
-              <div className="bg-gradient-to-br from-emerald-50 to-green-50 border-4 border-emerald-200 rounded-2xl p-6 mb-6">
+              <div className="bg-[var(--brand-eco-soft)] border-4 border-[var(--brand-eco)] rounded-2xl p-6 mb-6">
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="w-12 h-12 bg-emerald-600 rounded-full flex items-center justify-center">
+                  <div className="w-12 h-12 bg-[var(--brand-eco)] rounded-full flex items-center justify-center">
                     <Leaf className="w-6 h-6 text-white" />
                   </div>
-                  <h3 className="text-2xl font-bold text-emerald-900">Our Green Cleaning Promise</h3>
+                  <h3 className="text-2xl font-bold text-[var(--brand-eco-text)]">Our Green Cleaning Promise</h3>
                 </div>
 
                 <div className="space-y-3">
                   <div className="flex items-start gap-3">
-                    <CheckCircle className="w-6 h-6 text-emerald-600 flex-shrink-0 mt-0.5" />
+                    <CheckCircle className="w-6 h-6 text-[var(--brand-eco)] flex-shrink-0 mt-0.5" />
                     <div>
-                      <h4 className="font-semibold text-emerald-900">Eco-Friendly Products</h4>
-                      <p className="text-emerald-800 text-sm">Biodegradable, non-toxic cleaning solutions</p>
+                      <h4 className="font-semibold text-[var(--brand-eco-text)]">Eco-Friendly Products</h4>
+                      <p className="text-[var(--brand-eco-text)] text-sm opacity-85">Biodegradable, non-toxic cleaning solutions</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
                     <Droplets className="w-6 h-6 text-blue-600 flex-shrink-0 mt-0.5" />
                     <div>
-                      <h4 className="font-semibold text-emerald-900">Water Conservation</h4>
-                      <p className="text-emerald-800 text-sm">Efficient cleaning methods that reduce water waste</p>
+                      <h4 className="font-semibold text-[var(--brand-eco-text)]">Water Conservation</h4>
+                      <p className="text-[var(--brand-eco-text)] text-sm opacity-85">Efficient cleaning methods that reduce water waste</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
-                    <Recycle className="w-6 h-6 text-green-600 flex-shrink-0 mt-0.5" />
+                    <Recycle className="w-6 h-6 text-[var(--brand-eco)] flex-shrink-0 mt-0.5" />
                     <div>
-                      <h4 className="font-semibold text-emerald-900">Sustainable Practices</h4>
-                      <p className="text-emerald-800 text-sm">Recycling and proper waste management protocols</p>
+                      <h4 className="font-semibold text-[var(--brand-eco-text)]">Sustainable Practices</h4>
+                      <p className="text-[var(--brand-eco-text)] text-sm opacity-85">Recycling and proper waste management protocols</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
-                    <Shield className="w-6 h-6 text-emerald-600 flex-shrink-0 mt-0.5" />
+                    <Shield className="w-6 h-6 text-[var(--brand-eco)] flex-shrink-0 mt-0.5" />
                     <div>
-                      <h4 className="font-semibold text-emerald-900">Safe for All</h4>
-                      <p className="text-emerald-800 text-sm">Products safe for people, pets, and the planet</p>
+                      <h4 className="font-semibold text-[var(--brand-eco-text)]">Safe for All</h4>
+                      <p className="text-[var(--brand-eco-text)] text-sm opacity-85">Products safe for people, pets, and the planet</p>
                     </div>
                   </div>
                 </div>
               </div>
             </motion.div>
 
-            <motion.div initial={{ opacity: 0, x: 20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} className="rounded-2xl overflow-hidden shadow-2xl border-4 border-[#F4C430]">
+            <motion.div initial={{ opacity: 0, x: 20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} className="relative rounded-2xl overflow-hidden shadow-2xl border-4 border-[var(--brand-accent)]">
+              {service.isEcoFriendly && (
+                <div className="absolute top-4 left-4 z-10 inline-flex items-center gap-2 rounded-full bg-[var(--brand-eco-strong)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-white shadow-lg backdrop-blur-sm">
+                  <Leaf className="w-4 h-4" />
+                  <span>Green Initiative</span>
+                </div>
+              )}
               <ImageWithFallback src={service.detailImage} alt={service.title} className="w-full h-full object-cover" />
             </motion.div>
           </div>
@@ -121,10 +139,10 @@ export function ServiceDetail() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: index * 0.05 }}
-                className="bg-gradient-to-br from-[#F4C430]/10 to-white p-6 rounded-2xl shadow-md hover:shadow-xl transition-all border-4 border-emerald-200 hover:border-emerald-400 group"
+                className="bg-gradient-to-br from-[var(--brand-accent-soft)] to-white p-6 rounded-2xl shadow-md hover:shadow-xl transition-all border-4 border-[var(--brand-eco-soft)] hover:border-[var(--brand-eco)] group"
               >
                 <div className="flex items-start gap-3 mb-3">
-                  <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-emerald-700 rounded-full flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                  <div className="w-10 h-10 bg-[var(--brand-eco)] rounded-full flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
                     <Leaf className="w-5 h-5 text-white" />
                   </div>
                   <h3 className="text-xl font-bold text-gray-900 flex-grow">{item.title}</h3>
@@ -136,23 +154,23 @@ export function ServiceDetail() {
         </div>
       </section>
 
-      <section className="py-20 bg-gradient-to-br from-emerald-600 via-emerald-700 to-emerald-800 text-white relative overflow-hidden">
+      <section className="py-20 bg-[var(--brand-eco)] text-white relative overflow-hidden">
         <div className="absolute inset-0 opacity-10">
           <div className="absolute top-10 left-10 w-64 h-64 bg-white rounded-full blur-3xl"></div>
-          <div className="absolute bottom-10 right-10 w-96 h-96 bg-[#F4C430] rounded-full blur-3xl"></div>
+          <div className="absolute bottom-10 right-10 w-96 h-96 bg-[var(--brand-accent)] rounded-full blur-3xl"></div>
         </div>
 
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
           <div className="flex justify-center mb-6">
-            <Leaf className="w-16 h-16 text-[#F4C430]" />
+            <Leaf className="w-16 h-16 text-[var(--brand-accent)]" />
           </div>
           <h2 className="text-4xl md:text-5xl font-bold mb-6">Ready to Go Green?</h2>
-          <p className="text-xl mb-8 text-emerald-50">
+          <p className="text-xl mb-8 text-white/88">
             Experience professional {service.title.toLowerCase()} that cares for your space and our planet.
             Get your free eco-friendly quote today!
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link to="/get-quote" className="inline-flex items-center justify-center px-10 py-4 bg-[#F4C430] text-black rounded-full hover:bg-[#e5b520] transition-all transform hover:scale-105 font-semibold shadow-xl">
+            <Link to="/get-quote" className="inline-flex items-center justify-center px-10 py-4 bg-[var(--brand-accent)] text-black rounded-full hover:bg-[var(--brand-accent-hover)] transition-all transform hover:scale-105 font-semibold shadow-xl">
               Get Your Free Quote
               <ChevronRight className="ml-2 w-5 h-5" />
             </Link>

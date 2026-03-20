@@ -30,22 +30,22 @@ export function BeforeAfter() {
     {
       icon: Sparkles,
       title: 'Deep Cleaning Magic',
-      color: '#F4C430',
+      color: 'var(--brand-accent)',
     },
     {
       icon: LayoutGrid,
       title: 'Tailored Solutions',
-      color: '#F4C430',
+      color: 'var(--brand-accent)',
     },
     {
       icon: Droplets,
       title: 'Sustainable Cleanliness',
-      color: '#F4C430',
+      color: 'var(--brand-accent)',
     },
     {
       icon: Hand,
       title: 'Quick and Efficient',
-      color: '#F4C430',
+      color: 'var(--brand-accent)',
     },
   ];
 
@@ -67,12 +67,12 @@ export function BeforeAfter() {
           className="text-center mb-16"
         >
           <div className="flex items-center justify-center gap-2 mb-4">
-            <Sparkles className="w-5 h-5 text-[#F4C430]" />
-            <span className="text-[#F4C430] uppercase tracking-wide text-sm font-medium">
+            <Sparkles className="w-5 h-5 text-[var(--brand-accent)]" />
+            <span className="eyebrow-label text-[var(--brand-accent)]">
               DARE TO DAZZLING
             </span>
           </div>
-          <h2 className="text-4xl md:text-5xl text-gray-900 mb-4">
+          <h2 className="section-title text-4xl md:text-6xl text-gray-900 mb-4">
             Amazing Evolution of
             <br />
             Your Office & Your Home
@@ -103,7 +103,7 @@ export function BeforeAfter() {
                 >
                   <feature.icon className="w-8 h-8" style={{ color: feature.color }} />
                 </div>
-                <h3 className="text-lg font-semibold text-[#3D1810]">
+                <h3 className="card-title text-xl text-[var(--brand-brown)]">
                   {feature.title}
                 </h3>
               </motion.div>
@@ -208,7 +208,7 @@ export function BeforeAfter() {
                 >
                   <feature.icon className="w-8 h-8" style={{ color: feature.color }} />
                 </div>
-                <h3 className="text-lg font-semibold text-[#3D1810]">
+                <h3 className="text-lg font-semibold text-[var(--brand-brown)]">
                   {feature.title}
                 </h3>
               </motion.div>

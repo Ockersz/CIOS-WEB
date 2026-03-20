@@ -1,5 +1,15 @@
 export const seedContent = {
   siteSettings: {
+    styles: {
+      brandBrown: "#2f120c",
+      brandAccent: "#f4c430",
+      brandCanvas: "#f7f1e7",
+      brandSurface: "#fffaf2",
+      typographyPreset: "classic-editorial",
+      ecoGreen: "",
+      footerBackground: "",
+      heroOverlay: "",
+    },
     business: {
       name: "CIOS Cleaning & Detailing",
       shortDescription:
@@ -83,6 +93,28 @@ export const seedContent = {
         },
       ],
     },
+    contactCards: [
+      {
+        icon: "MapPin",
+        title: "Visit Us",
+        details: ["2 Bryants Road", "Dandenong VIC 3175", "Australia"],
+      },
+      {
+        icon: "Phone",
+        title: "Call Us",
+        details: ["+61 03 8907 1881", "+61 03 8907 1881", "Mon to Fri, 9:00am - 5:00pm"],
+      },
+      {
+        icon: "Mail",
+        title: "Email Us",
+        details: ["info@cios.com.au", "info@cios.com.au", "24/7 Response"],
+      },
+      {
+        icon: "Clock",
+        title: "Working Hours",
+        details: ["Mon to Fri, 9:00am - 5:00pm"],
+      },
+    ],
   },
   pages: [
     {

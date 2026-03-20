@@ -24,6 +24,35 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes('node_modules')) {
+            return undefined
+          }
+
+          if (id.includes('react-router')) {
+            return 'router'
+          }
+
+          if (id.includes('motion')) {
+            return 'motion'
+          }
+
+          if (
+            id.includes('/react/') ||
+            id.includes('react-dom') ||
+            id.includes('scheduler')
+          ) {
+            return 'react-vendor'
+          }
+
+          return undefined
+        },
+      },
+    },
+  },
 
   // File types to support raw imports. Never add .css, .tsx, or .ts files to this.
   assetsInclude: ['**/*.svg', '**/*.csv'],

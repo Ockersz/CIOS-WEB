@@ -3,6 +3,7 @@ import express from "express";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { exportCmsBackup, importCmsBackupZip } from "./backup.js";
+import { buildRobotsTxt, buildSitemapXml, renderSeoHtml } from "./seo.js";
 import {
   createBlogPost,
   createService,
@@ -60,6 +61,7 @@ app.use(
 );
 app.use(
   express.static(distDir, {
+    index: false,
     etag: true,
     lastModified: true,
     setHeaders: (res, filePath) => {
@@ -371,17 +373,33 @@ app.post(
   },
 );
 
+app.get("/robots.txt", (_req, res) => {
+  res.type("text/plain").send(buildRobotsTxt());
+});
+
+app.get("/sitemap.xml", async (_req, res, next) => {
+  try {
+    res.type("application/xml").send(await buildSitemapXml());
+  } catch (error) {
+    next(error);
+  }
+});
+
 app.get(/^(?!\/api(?:\/|$)).*/, (req, res, next) => {
   if (req.method !== "GET") {
     return next();
   }
 
-  res.setHeader("Cache-Control", "no-cache");
-  res.sendFile(indexHtmlPath, (error) => {
-    if (error) {
-      next(error);
-    }
-  });
+  renderSeoHtml(indexHtmlPath, req.path)
+    .then((result) => {
+      if (result.redirectTo) {
+        return res.redirect(302, result.redirectTo);
+      }
+
+      res.setHeader("Cache-Control", "no-cache");
+      res.type("html").send(result.html);
+    })
+    .catch(next);
 });
 
 app.use((error, _req, res, _next) => {

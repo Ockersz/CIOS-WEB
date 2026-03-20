@@ -1,9 +1,11 @@
 import { motion } from 'motion/react';
 import { Briefcase, CheckCircle } from 'lucide-react';
 import { Sparkles } from '../Sparkles';
+import { SiteIcon } from '../SiteIcon';
 import { useState } from 'react';
 import { useCmsPage } from '../../lib/api';
-import { iconMap } from '../../lib/iconMap';
+import { Seo } from '../Seo';
+import { buildPageTitle, trimSeoDescription } from '../../lib/seo';
 
 export function JoinTeam() {
   const { data: page } = useCmsPage<any>('join-team');
@@ -35,12 +37,17 @@ export function JoinTeam() {
 
   return (
     <div className="w-full">
+      <Seo
+        title={buildPageTitle('Careers')}
+        description={trimSeoDescription(page?.heroSubtitle)}
+        path="/join-team"
+      />
       <section className="relative bg-gradient-to-br from-gray-900 to-gray-800 text-white py-20 md:py-32 overflow-hidden">
         <Sparkles count={30} />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} className="text-center max-w-3xl mx-auto">
-            <h1 className="text-4xl md:text-6xl mb-6">{page?.heroTitle}</h1>
-            <p className="text-xl text-gray-300">{page?.heroSubtitle}</p>
+            <h1 className="hero-title text-5xl md:text-7xl mb-6">{page?.heroTitle}</h1>
+            <p className="body-copy text-xl text-gray-300">{page?.heroSubtitle}</p>
           </motion.div>
         </div>
       </section>
@@ -48,16 +55,15 @@ export function JoinTeam() {
       <section className="py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-12">
-            <h2 className="text-4xl mb-4">Why Work With Us?</h2>
+            <h2 className="section-title text-4xl md:text-5xl mb-4">Why Work With Us?</h2>
           </motion.div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
             {(page?.content?.benefits || []).map((benefit: any, index: number) => {
-              const Icon = iconMap[benefit.icon as keyof typeof iconMap];
               return (
                 <motion.div key={benefit.title} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: index * 0.1 }} className="bg-gradient-to-br from-gray-50 to-white p-8 rounded-2xl shadow-lg text-center hover:shadow-xl transition-shadow">
-                  {Icon ? <Icon className="w-16 h-16 mx-auto mb-4 text-[#F4C430]" /> : null}
-                  <h3 className="text-xl mb-3">{benefit.title}</h3>
-                  <p className="text-gray-600 text-sm">{benefit.description}</p>
+                  <SiteIcon name={benefit.icon} fallback={Briefcase} className="w-16 h-16 mx-auto mb-4 text-[var(--brand-accent)]" />
+                  <h3 className="card-title text-xl mb-3">{benefit.title}</h3>
+                  <p className="body-copy text-gray-600 text-sm">{benefit.description}</p>
                 </motion.div>
               );
             })}
@@ -68,13 +74,13 @@ export function JoinTeam() {
       <section className="py-20 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-12">
-            <h2 className="text-4xl mb-4">Employee Perks & Benefits</h2>
+            <h2 className="section-title text-4xl md:text-5xl mb-4">Employee Perks & Benefits</h2>
           </motion.div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {(page?.content?.perks || []).map((perk: string, index: number) => (
               <motion.div key={perk} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: index * 0.1 }} className="bg-white p-6 rounded-xl flex items-center shadow-md">
-                <CheckCircle className="w-6 h-6 text-[#F4C430] mr-3 flex-shrink-0" />
-                <span>{perk}</span>
+                <CheckCircle className="w-6 h-6 text-[var(--brand-accent)] mr-3 flex-shrink-0" />
+                <span className="body-copy">{perk}</span>
               </motion.div>
             ))}
           </div>
@@ -84,9 +90,9 @@ export function JoinTeam() {
       <section className="py-20 bg-white">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-12">
-            <Briefcase className="w-16 h-16 mx-auto mb-4 text-[#F4C430]" />
-            <h2 className="text-4xl mb-4">Apply Now</h2>
-            <p className="text-gray-600">Fill out the form below to start your application process</p>
+            <Briefcase className="w-16 h-16 mx-auto mb-4 text-[var(--brand-accent)]" />
+            <h2 className="section-title text-4xl md:text-5xl mb-4">Apply Now</h2>
+            <p className="body-copy text-gray-600">Fill out the form below to start your application process</p>
           </motion.div>
           <motion.form initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} onSubmit={handleSubmit} className="space-y-6 bg-gray-50 p-8 rounded-2xl">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -131,7 +137,7 @@ export function JoinTeam() {
               </div>
             </div>
 
-            <button type="submit" className="w-full px-8 py-4 bg-[#F4C430] text-black rounded-full hover:bg-[#e5b520] transition-all transform hover:scale-105">
+            <button type="submit" className="button-text w-full px-8 py-4 bg-[var(--brand-accent)] text-black rounded-full hover:bg-[var(--brand-accent-hover)] transition-all transform hover:scale-105">
               Submit Application
             </button>
           </motion.form>

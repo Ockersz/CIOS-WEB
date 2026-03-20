@@ -1,14 +1,16 @@
 import { Link } from "react-router";
 import { Facebook, Instagram, Linkedin, Mail, Phone, MapPin } from "lucide-react";
 import ciosLogoDark from "../../imports/ciosdark.svg";
-import { useSiteSettings } from "../lib/api";
+import { useCmsPage, useSiteSettings } from "../lib/api";
 
 export function Footer() {
   const { data: settings } = useSiteSettings();
+  const { data: blogPage } = useCmsPage("blog");
   const business = settings?.business;
+  const isBlogVisible = blogPage?.content?.isVisible !== false;
 
   return (
-    <footer className="bg-[#1a1a1a] text-white pt-16 pb-8">
+    <footer className="bg-[var(--brand-footer-background)] text-white pt-16 pb-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
           <div>
@@ -17,13 +19,13 @@ export function Footer() {
               {business?.shortDescription || "Professional cleaning services for every space."}
             </p>
             <div className="flex space-x-4">
-              <a href={business?.linkedinUrl || "#"} className="text-gray-400 hover:text-[#F4C430] transition-colors">
+              <a href={business?.linkedinUrl || "#"} className="text-gray-400 hover:text-[var(--brand-accent)] transition-colors">
                 <Linkedin size={20} />
               </a>
-              <a href="#" className="text-gray-400 hover:text-[#F4C430] transition-colors">
+              <a href="#" className="text-gray-400 hover:text-[var(--brand-accent)] transition-colors">
                 <Facebook size={20} />
               </a>
-              <a href="#" className="text-gray-400 hover:text-[#F4C430] transition-colors">
+              <a href="#" className="text-gray-400 hover:text-[var(--brand-accent)] transition-colors">
                 <Instagram size={20} />
               </a>
             </div>
@@ -32,10 +34,12 @@ export function Footer() {
           <div>
             <h3 className="mb-4">Quick Links</h3>
             <ul className="space-y-2 text-sm">
-              <li><Link to="/about" className="text-gray-400 hover:text-[#F4C430] transition-colors">About Us</Link></li>
-              <li><Link to="/services" className="text-gray-400 hover:text-[#F4C430] transition-colors">Our Services</Link></li>
-              <li><Link to="/blog" className="text-gray-400 hover:text-[#F4C430] transition-colors">Blog</Link></li>
-              <li><Link to="/contact" className="text-gray-400 hover:text-[#F4C430] transition-colors">Contact</Link></li>
+              <li><Link to="/about" className="text-gray-400 hover:text-[var(--brand-accent)] transition-colors">About Us</Link></li>
+              <li><Link to="/services" className="text-gray-400 hover:text-[var(--brand-accent)] transition-colors">Our Services</Link></li>
+              {isBlogVisible && (
+                <li><Link to="/blog" className="text-gray-400 hover:text-[var(--brand-accent)] transition-colors">Blog</Link></li>
+              )}
+              <li><Link to="/contact" className="text-gray-400 hover:text-[var(--brand-accent)] transition-colors">Contact</Link></li>
             </ul>
           </div>
 
@@ -53,19 +57,19 @@ export function Footer() {
             <ul className="space-y-3 text-sm">
               {business?.addressLines?.length ? (
                 <li className="flex items-start">
-                  <MapPin size={16} className="mr-2 mt-1 flex-shrink-0 text-[#F4C430]" />
+                  <MapPin size={16} className="mr-2 mt-1 flex-shrink-0 text-[var(--brand-accent)]" />
                   <span className="text-gray-400">{business.addressLines.join(", ")}</span>
                 </li>
               ) : null}
               {business?.phoneDisplay ? (
                 <li className="flex items-center">
-                  <Phone size={16} className="mr-2 flex-shrink-0 text-[#F4C430]" />
+                  <Phone size={16} className="mr-2 flex-shrink-0 text-[var(--brand-accent)]" />
                   <span className="text-gray-400">{business.phoneDisplay}</span>
                 </li>
               ) : null}
               {business?.email ? (
                 <li className="flex items-center">
-                  <Mail size={16} className="mr-2 flex-shrink-0 text-[#F4C430]" />
+                  <Mail size={16} className="mr-2 flex-shrink-0 text-[var(--brand-accent)]" />
                   <span className="text-gray-400">{business.email}</span>
                 </li>
               ) : null}
