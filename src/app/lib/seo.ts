@@ -61,6 +61,25 @@ function setLinkHref(id: string, href: string) {
   }
 }
 
+function setImagePreload(href?: string | null) {
+  const existing = document.getElementById("preload-image");
+  if (!href) {
+    existing?.remove();
+    return;
+  }
+
+  const link =
+    existing instanceof HTMLLinkElement ? existing : document.createElement("link");
+  link.id = "preload-image";
+  link.rel = "preload";
+  link.as = "image";
+  link.href = href;
+
+  if (!(existing instanceof HTMLLinkElement)) {
+    document.head.appendChild(link);
+  }
+}
+
 function setStructuredData(data?: StructuredData | null) {
   const element = document.getElementById("seo-structured-data");
   if (!(element instanceof HTMLScriptElement)) {
@@ -95,6 +114,7 @@ export function applySeoTags({
 }) {
   const canonicalUrl = resolveSeoUrl(path);
   const imageUrl = resolveSeoImage(image);
+  const preloadImageUrl = image ? imageUrl : null;
   const robots = noIndex ? "noindex, nofollow" : DEFAULT_ROBOTS;
 
   document.title = title;
@@ -115,6 +135,7 @@ export function applySeoTags({
   setMetaContent("meta-twitter-url", canonicalUrl);
   setMetaContent("meta-robots", robots);
   setLinkHref("canonical-link", canonicalUrl);
+  setImagePreload(preloadImageUrl);
   setStructuredData(structuredData);
 }
 

@@ -23,6 +23,8 @@ export function Services() {
   const { data: services } = useServices();
   const features = page?.content?.greenFeatures || [];
   const cta = page?.content?.cta;
+  const heroImage =
+    "https://images.unsplash.com/photo-1752097439317-daa5cf0b7dd1?auto=format&fit=crop&w=1920&q=80";
 
   return (
     <div className="w-full">
@@ -30,13 +32,16 @@ export function Services() {
         title={buildPageTitle('Cleaning Services')}
         description={trimSeoDescription(page?.heroSubtitle || page?.heroDescription)}
         path="/services"
+        image={heroImage}
       />
       <section className="relative text-white py-24 md:py-32 overflow-hidden">
         <div className="absolute inset-0">
           <ImageWithFallback
-            src="https://images.unsplash.com/photo-1752097439317-daa5cf0b7dd1?w=1920"
+            src={heroImage}
             alt="Nature background"
             className="w-full h-full object-cover"
+            loading="eager"
+            fetchPriority="high"
           />
           <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/50 to-black/70"></div>
         </div>

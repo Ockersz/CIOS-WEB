@@ -40,7 +40,13 @@ export function ServiceDetail() {
       />
       <section className="relative text-white py-24 md:py-32 overflow-hidden">
         <div className="absolute inset-0">
-          <ImageWithFallback src={service.heroImage} alt={service.title} className="w-full h-full object-cover" />
+          <ImageWithFallback
+            src={service.heroImage}
+            alt={service.title}
+            className="w-full h-full object-cover"
+            loading="eager"
+            fetchPriority="high"
+          />
           <div className="absolute inset-0 bg-[var(--brand-brown-overlay)]"></div>
         </div>
 

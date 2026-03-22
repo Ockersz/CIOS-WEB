@@ -2,11 +2,14 @@ import mysql from "mysql2/promise";
 import crypto from "node:crypto";
 import { seedContent } from "./seedContent.js";
 import {
-  downloadRemoteImage,
   ensureUploadDirectory,
+  prepareBinaryImageAsset,
+  prepareDataUrlImageAsset,
+  prepareRemoteImageAsset,
+  prepareStoredImageAsset,
+  removeStoredImageAsset,
+  writePreparedImageAsset,
   inferImageNameFromUrl,
-  saveBinaryImage,
-  saveDataUrlImage,
   sanitizeDisplayName,
 } from "./media.js";
 
@@ -23,7 +26,7 @@ const connectionConfig = {
 let pool;
 const DEFAULT_ADMIN_USERNAME = process.env.ADMIN_USERNAME || "admin";
 const DEFAULT_ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin123";
-const IMAGE_KEYS = new Set(["image", "heroImage", "detailImage", "src"]);
+const IMAGE_KEYS = new Set(["image", "heroImage", "detailImage", "src", "logo"]);
 
 function parseJson(value) {
   if (!value) return null;
@@ -69,16 +72,16 @@ function collectRemoteImageUrls(value, trail = [], output = new Set()) {
   return output;
 }
 
-function replaceRemoteImageUrls(value, urlMap, trail = []) {
+function replaceImageUrls(value, urlMap, trail = []) {
   if (Array.isArray(value)) {
-    return value.map((item) => replaceRemoteImageUrls(item, urlMap, trail));
+    return value.map((item) => replaceImageUrls(item, urlMap, trail));
   }
 
   if (value && typeof value === "object") {
     return Object.fromEntries(
       Object.entries(value).map(([key, child]) => [
         key,
-        replaceRemoteImageUrls(child, urlMap, [...trail, key]),
+        replaceImageUrls(child, urlMap, [...trail, key]),
       ]),
     );
   }
@@ -383,12 +386,14 @@ export async function initializeDatabase() {
 
   await ensureColumnExists(db, "services", "sort_order", "INT NOT NULL DEFAULT 0");
   await ensureColumnExists(db, "services", "show_on_home", "BOOLEAN DEFAULT TRUE");
+  await ensureColumnExists(db, "image_assets", "content_hash", "CHAR(64) NULL");
   await ensureServiceSortOrder(db);
 
   await ensureSiteSettings(db);
   await ensureAdminUser(db);
   await seedIfEmpty(db);
   await importRemoteImagesIntoLibrary();
+  await optimizeImageAssetLibrary(db);
 }
 
 async function ensureSiteSettings(db) {
@@ -873,10 +878,22 @@ export async function getImageAssets() {
   }));
 }
 
+function mapImageAssetRow(row) {
+  return {
+    id: row.id,
+    name: row.display_name,
+    storedName: row.stored_name,
+    url: row.url,
+    mimeType: row.mime_type,
+    sizeBytes: Number(row.size_bytes || 0),
+    contentHash: row.content_hash || "",
+  };
+}
+
 async function createImageAssetRecord(db, asset) {
   const [result] = await db.query(
-    `INSERT INTO image_assets (display_name, stored_name, url, mime_type, size_bytes, source_url)
-     VALUES (?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO image_assets (display_name, stored_name, url, mime_type, size_bytes, source_url, content_hash)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
     [
       asset.displayName,
       asset.storedName,
@@ -884,6 +901,7 @@ async function createImageAssetRecord(db, asset) {
       asset.mimeType,
       Number(asset.sizeBytes || 0),
       asset.sourceUrl || null,
+      asset.contentHash || null,
     ],
   );
 
@@ -894,20 +912,27 @@ async function createImageAssetRecord(db, asset) {
     url: asset.url,
     mimeType: asset.mimeType,
     sizeBytes: Number(asset.sizeBytes || 0),
+    contentHash: asset.contentHash || "",
   };
 }
 
 export async function uploadImageAsset({ name, dataUrl }) {
   const db = await getPool();
-  const saved = await saveDataUrlImage(dataUrl, name);
-  await createImageAssetRecord(db, saved);
+  const prepared = await prepareDataUrlImageAsset(dataUrl, name);
+  const existing = await findImageAssetByContentHash(db, prepared.contentHash);
+  if (!existing) {
+    await createImageAssetRecord(db, await writePreparedImageAsset(prepared));
+  }
   return getImageAssets();
 }
 
 export async function uploadBinaryImageAsset({ name, mimeType, buffer }) {
   const db = await getPool();
-  const saved = await saveBinaryImage(buffer, mimeType, name);
-  await createImageAssetRecord(db, saved);
+  const prepared = await prepareBinaryImageAsset(buffer, mimeType, name);
+  const existing = await findImageAssetByContentHash(db, prepared.contentHash);
+  if (!existing) {
+    await createImageAssetRecord(db, await writePreparedImageAsset(prepared));
+  }
   return getImageAssets();
 }
 
@@ -922,9 +947,18 @@ export async function renameImageAsset(id, name) {
 
 async function findImageAssetBySourceUrl(db, sourceUrl) {
   const [rows] = await db.query(
-    `SELECT id, display_name, stored_name, url, mime_type, size_bytes
+    `SELECT id, display_name, stored_name, url, mime_type, size_bytes, content_hash
      FROM image_assets WHERE source_url = ? LIMIT 1`,
     [sourceUrl],
+  );
+  return rows[0] || null;
+}
+
+async function findImageAssetByContentHash(db, contentHash) {
+  const [rows] = await db.query(
+    `SELECT id, display_name, stored_name, url, mime_type, size_bytes, content_hash
+     FROM image_assets WHERE content_hash = ? LIMIT 1`,
+    [contentHash],
   );
   return rows[0] || null;
 }
@@ -932,18 +966,158 @@ async function findImageAssetBySourceUrl(db, sourceUrl) {
 async function importRemoteImageAsset(db, sourceUrl) {
   const existing = await findImageAssetBySourceUrl(db, sourceUrl);
   if (existing) {
-    return {
-      id: existing.id,
-      name: existing.display_name,
-      storedName: existing.stored_name,
-      url: existing.url,
-      mimeType: existing.mime_type,
-      sizeBytes: Number(existing.size_bytes || 0),
-    };
+    return mapImageAssetRow(existing);
   }
 
-  const downloaded = await downloadRemoteImage(sourceUrl, inferImageNameFromUrl(sourceUrl));
-  return createImageAssetRecord(db, { ...downloaded, sourceUrl });
+  const prepared = await prepareRemoteImageAsset(sourceUrl, inferImageNameFromUrl(sourceUrl));
+  const existingByHash = await findImageAssetByContentHash(db, prepared.contentHash);
+  if (existingByHash) {
+    await db.query(
+      `UPDATE image_assets SET source_url = COALESCE(source_url, ?) WHERE id = ?`,
+      [sourceUrl, existingByHash.id],
+    );
+    return mapImageAssetRow(existingByHash);
+  }
+
+  return createImageAssetRecord(db, {
+    ...(await writePreparedImageAsset(prepared)),
+    sourceUrl,
+  });
+}
+
+async function syncImageUrlReferences(urlMap) {
+  if (!urlMap.size) {
+    return;
+  }
+
+  const currentSettings = await getSiteSettings();
+  const currentPages = await getAllPages();
+  const currentServices = await getAllServicesWithItems();
+  await updateSiteSettings(replaceImageUrls(currentSettings, urlMap));
+
+  for (const page of currentPages) {
+    await updatePage(page.slug, {
+      ...page,
+      content: replaceImageUrls(page.content, urlMap),
+    });
+  }
+
+  for (const service of currentServices) {
+    await updateService(service.id, replaceImageUrls(service, urlMap));
+  }
+}
+
+async function optimizeImageAssetLibrary(db) {
+  const [rows] = await db.query(
+    `SELECT id, display_name, stored_name, url, mime_type, size_bytes, source_url, content_hash
+     FROM image_assets ORDER BY id ASC`,
+  );
+
+  if (!rows.length) {
+    return;
+  }
+
+  const canonicalByHash = new Map();
+  const rowUpdates = [];
+  const duplicateIds = [];
+  const urlMap = new Map();
+  const filesToDelete = new Set();
+
+  for (const row of rows) {
+    let prepared;
+    try {
+      prepared = await prepareStoredImageAsset(
+        row.stored_name,
+        row.mime_type,
+        row.display_name,
+      );
+    } catch (error) {
+      console.warn(
+        `Skipping image optimization for ${row.stored_name}`,
+        error instanceof Error ? error.message : error,
+      );
+      continue;
+    }
+
+    const canonical = canonicalByHash.get(prepared.contentHash);
+    if (canonical) {
+      if (row.url !== canonical.url) {
+        urlMap.set(row.url, canonical.url);
+      }
+      duplicateIds.push(row.id);
+      if (row.stored_name !== canonical.storedName) {
+        filesToDelete.add(row.stored_name);
+      }
+      continue;
+    }
+
+    let nextStoredName = row.stored_name;
+    let nextUrl = row.url;
+    const extensionChanged = !row.stored_name
+      .toLowerCase()
+      .endsWith(prepared.extension.toLowerCase());
+    const needsRewrite =
+      prepared.contentHash !== String(row.content_hash || "") ||
+      prepared.mimeType !== String(row.mime_type || "") ||
+      extensionChanged;
+
+    if (needsRewrite) {
+      if (extensionChanged) {
+        const saved = await writePreparedImageAsset(prepared);
+        nextStoredName = saved.storedName;
+        nextUrl = saved.url;
+        if (row.url !== nextUrl) {
+          urlMap.set(row.url, nextUrl);
+        }
+        filesToDelete.add(row.stored_name);
+      } else {
+        await writePreparedImageAsset(prepared, { storedName: row.stored_name });
+      }
+    }
+
+    rowUpdates.push({
+      id: row.id,
+      storedName: nextStoredName,
+      url: nextUrl,
+      mimeType: prepared.mimeType,
+      sizeBytes: prepared.buffer.byteLength,
+      contentHash: prepared.contentHash,
+    });
+    canonicalByHash.set(prepared.contentHash, {
+      id: row.id,
+      storedName: nextStoredName,
+      url: nextUrl,
+    });
+  }
+
+  for (const row of rowUpdates) {
+    await db.query(
+      `UPDATE image_assets
+       SET stored_name = ?, url = ?, mime_type = ?, size_bytes = ?, content_hash = ?
+       WHERE id = ?`,
+      [
+        row.storedName,
+        row.url,
+        row.mimeType,
+        row.sizeBytes,
+        row.contentHash,
+        row.id,
+      ],
+    );
+  }
+
+  await syncImageUrlReferences(urlMap);
+
+  for (const duplicateId of duplicateIds) {
+    await db.query(`DELETE FROM image_assets WHERE id = ?`, [duplicateId]);
+  }
+
+  const activeStoredNames = new Set(rowUpdates.map((row) => row.storedName));
+  for (const storedName of filesToDelete) {
+    if (!activeStoredNames.has(storedName)) {
+      await removeStoredImageAsset(storedName);
+    }
+  }
 }
 
 export async function importRemoteImagesIntoLibrary() {
@@ -976,16 +1150,16 @@ export async function importRemoteImagesIntoLibrary() {
     return getImageAssets();
   }
 
-  const nextSettings = replaceRemoteImageUrls(currentSettings, urlMap);
+  const nextSettings = replaceImageUrls(currentSettings, urlMap);
   await updateSiteSettings(nextSettings);
 
   for (const page of currentPages) {
-    const nextContent = replaceRemoteImageUrls(page.content, urlMap);
+    const nextContent = replaceImageUrls(page.content, urlMap);
     await updatePage(page.slug, { ...page, content: nextContent });
   }
 
   for (const service of currentServices) {
-    const nextService = replaceRemoteImageUrls(service, urlMap);
+    const nextService = replaceImageUrls(service, urlMap);
     await updateService(service.id, nextService);
   }
 

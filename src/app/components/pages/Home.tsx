@@ -21,7 +21,7 @@ import {
   UserPlus,
   Users,
 } from "lucide-react";
-import heroBackgroundImage from "../../../assets/7ca8818179e3f3b71f754641ebc815ec081dd833.png";
+import heroBackgroundImage from "../../../assets/7ca8818179e3f3b71f754641ebc815ec081dd833.webp";
 import { useBlogPosts, useCmsPage, useSiteSettings } from "../../lib/api";
 import { Seo } from "../Seo";
 import { buildPageTitle, createLocalBusinessStructuredData, trimSeoDescription } from "../../lib/seo";
@@ -97,19 +97,20 @@ export function Home() {
         title={buildPageTitle("Professional Cleaning Services in Dandenong", settings)}
         description={seoDescription}
         path="/"
-        image={page?.content?.heroImage}
+        image={heroImage}
         structuredData={createLocalBusinessStructuredData(settings, "/")}
       />
       <section className="relative bg-gradient-to-br from-gray-900 to-gray-800 text-white py-20 md:py-32 overflow-hidden">
-        <div
-          className="absolute inset-0 z-0 opacity-100"
-          style={{
-            backgroundImage: `url(${heroImage})`,
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-            backgroundRepeat: "no-repeat",
-          }}
-        />
+        <div className="absolute inset-0 z-0 opacity-100">
+          <ImageWithFallback
+            src={heroImage}
+            alt=""
+            aria-hidden="true"
+            className="w-full h-full object-cover"
+            loading="eager"
+            fetchPriority="high"
+          />
+        </div>
         <div className="absolute inset-0 bg-[var(--brand-brown-overlay)] z-[1]" />
         <Sparkles count={30} />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
