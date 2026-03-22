@@ -47,3 +47,94 @@ test("prepareDataUrlImageAsset accepts image data URLs", async () => {
   assert.equal(prepared.contentHash.length, 64);
   assert.ok(prepared.buffer.byteLength > 0);
 });
+
+test("prepareBinaryImageAsset keeps small transparent logo graphics lossless", async () => {
+  const logoBuffer = await sharp({
+    create: {
+      width: 256,
+      height: 256,
+      channels: 4,
+      background: { r: 0, g: 0, b: 0, alpha: 0 },
+    },
+  })
+    .composite([
+      {
+        input: Buffer.from(
+          '<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256">' +
+            '<circle cx="128" cy="128" r="96" fill="#d1ab25"/>' +
+            '<path d="M80 128h96" stroke="#111111" stroke-width="18" stroke-linecap="round"/>' +
+            "</svg>",
+        ),
+      },
+    ])
+    .png()
+    .toBuffer();
+
+  const prepared = await prepareBinaryImageAsset(logoBuffer, "image/png", "ciosdark");
+
+  assert.equal(prepared.mimeType, "image/png");
+  assert.equal(prepared.extension, ".png");
+  assert.deepEqual(prepared.buffer, logoBuffer);
+});
+
+test("prepareBinaryImageAsset keeps named logo graphics lossless", async () => {
+  const logoBuffer = await sharp({
+    create: {
+      width: 320,
+      height: 120,
+      channels: 3,
+      background: { r: 250, g: 250, b: 250 },
+    },
+  })
+    .composite([
+      {
+        input: Buffer.from(
+          '<svg xmlns="http://www.w3.org/2000/svg" width="320" height="120">' +
+            '<rect width="320" height="120" fill="#fafafa"/>' +
+            '<text x="24" y="76" font-size="54" font-family="Arial" fill="#1a1a1a">CIOS</text>' +
+            "</svg>",
+        ),
+      },
+    ])
+    .png()
+    .toBuffer();
+
+  const prepared = await prepareBinaryImageAsset(
+    logoBuffer,
+    "image/png",
+    "CIOS Dark Logo",
+  );
+
+  assert.equal(prepared.mimeType, "image/png");
+  assert.equal(prepared.extension, ".png");
+  assert.deepEqual(prepared.buffer, logoBuffer);
+});
+
+test("prepareBinaryImageAsset keeps ciosdark-style logo files high fidelity", async () => {
+  const logoBuffer = await sharp({
+    create: {
+      width: 1400,
+      height: 420,
+      channels: 3,
+      background: { r: 249, g: 249, b: 243 },
+    },
+  })
+    .composite([
+      {
+        input: Buffer.from(
+          '<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="420">' +
+            '<rect width="1400" height="420" fill="#f9f9f3"/>' +
+            '<text x="80" y="250" font-size="170" font-family="Arial" fill="#d1ab25">CIOS</text>' +
+            "</svg>",
+        ),
+      },
+    ])
+    .png()
+    .toBuffer();
+
+  const prepared = await prepareBinaryImageAsset(logoBuffer, "image/png", "ciosdark");
+
+  assert.equal(prepared.mimeType, "image/png");
+  assert.equal(prepared.extension, ".png");
+  assert.deepEqual(prepared.buffer, logoBuffer);
+});

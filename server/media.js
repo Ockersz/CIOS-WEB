@@ -10,6 +10,9 @@ const __dirname = path.dirname(__filename);
 export const UPLOAD_DIR = path.join(__dirname, "..", "uploads");
 export const UPLOAD_URL_PREFIX = "/uploads";
 const MAX_OPTIMIZED_IMAGE_DIMENSION = 1920;
+const MAX_PRESERVED_GRAPHIC_DIMENSION = 1920;
+const PHOTO_WEBP_QUALITY = 76;
+const PHOTO_WEBP_ALPHA_QUALITY = 84;
 const OPTIMIZABLE_RASTER_MIME_TYPES = new Set([
   "image/jpeg",
   "image/jpg",
@@ -17,6 +20,8 @@ const OPTIMIZABLE_RASTER_MIME_TYPES = new Set([
   "image/webp",
   "image/avif",
 ]);
+const GRAPHIC_NAME_PATTERN =
+  /\b(logo|icon|badge|brand|mark|seal|crest|emblem|symbol|wordmark|ciosdark|cioslogo)\b/i;
 
 const MIME_EXTENSION_MAP = {
   "image/jpeg": ".jpg",
@@ -90,7 +95,21 @@ function getOutputExtension(mimeType, fallbackExtension = "") {
   return getExtensionFromMimeType(mimeType) || fallbackExtension || ".bin";
 }
 
-async function optimizeImageBuffer(buffer, mimeType, extensionHint = "") {
+function shouldPreserveGraphicOriginal(metadata, mimeType, preferredName = "") {
+  const preservesSharpEdges =
+    mimeType === "image/png" || mimeType === "image/webp" || mimeType === "image/avif";
+  const isSmallGraphic =
+    metadata.width <= MAX_PRESERVED_GRAPHIC_DIMENSION &&
+    metadata.height <= MAX_PRESERVED_GRAPHIC_DIMENSION;
+
+  if (!preservesSharpEdges || !isSmallGraphic) {
+    return false;
+  }
+
+  return Boolean(metadata.hasAlpha) || GRAPHIC_NAME_PATTERN.test(String(preferredName || ""));
+}
+
+async function optimizeImageBuffer(buffer, mimeType, extensionHint = "", preferredName = "") {
   const normalizedMimeType = normalizeMimeType(mimeType, extensionHint);
   const normalizedExtension = getOutputExtension(normalizedMimeType, extensionHint);
 
@@ -113,21 +132,44 @@ async function optimizeImageBuffer(buffer, mimeType, extensionHint = "") {
       };
     }
 
+    const shouldKeepGraphicOriginal = shouldPreserveGraphicOriginal(
+      metadata,
+      normalizedMimeType,
+      preferredName,
+    );
+    const willResize =
+      metadata.width > MAX_OPTIMIZED_IMAGE_DIMENSION ||
+      metadata.height > MAX_OPTIMIZED_IMAGE_DIMENSION;
+    if (shouldKeepGraphicOriginal && !willResize) {
+      return {
+        buffer,
+        mimeType: normalizedMimeType,
+        extension: normalizedExtension,
+      };
+    }
+
     const resized = source.resize({
       width: MAX_OPTIMIZED_IMAGE_DIMENSION,
       height: MAX_OPTIMIZED_IMAGE_DIMENSION,
       fit: "inside",
       withoutEnlargement: true,
     });
-    const { data, info } = await resized
-      .webp({
-        quality: metadata.hasAlpha ? 86 : 82,
-        alphaQuality: 90,
-        effort: 4,
-      })
-      .toBuffer({ resolveWithObject: true });
-    const wasResized = info.width < metadata.width || info.height < metadata.height;
-    const shouldKeepOriginal = !wasResized && data.byteLength >= buffer.byteLength * 0.98;
+    const encoded = shouldKeepGraphicOriginal
+      ? await resized
+          .webp({
+            lossless: true,
+            effort: 5,
+            preset: "icon",
+          })
+          .toBuffer({ resolveWithObject: true })
+      : await resized
+          .webp({
+            quality: metadata.hasAlpha ? PHOTO_WEBP_ALPHA_QUALITY : PHOTO_WEBP_QUALITY,
+            alphaQuality: PHOTO_WEBP_ALPHA_QUALITY,
+            effort: 5,
+          })
+          .toBuffer({ resolveWithObject: true });
+    const shouldKeepOriginal = !willResize && encoded.data.byteLength >= buffer.byteLength * 0.98;
 
     if (shouldKeepOriginal) {
       return {
@@ -138,7 +180,7 @@ async function optimizeImageBuffer(buffer, mimeType, extensionHint = "") {
     }
 
     return {
-      buffer: data,
+      buffer: encoded.data,
       mimeType: "image/webp",
       extension: ".webp",
     };
@@ -195,6 +237,7 @@ export async function prepareBinaryImageAsset(
     normalizedBuffer,
     mimeType || "application/octet-stream",
     effectiveExtension,
+    preferredName,
   );
 
   return {
