@@ -5,6 +5,7 @@ import { promisify } from "node:util";
 import { execFile } from "node:child_process";
 import { getAdminBootstrap, getDatabaseConfig, initializeDatabase, resetDatabasePool } from "./db.js";
 import { ensureUploadDirectory, UPLOAD_DIR } from "./media.js";
+import { createZipBufferFromPaths, extractZipArchive, listZipEntries, openZipArchive } from "./zip.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -69,34 +70,24 @@ async function createBackupManifest(targetDir) {
 export async function exportCmsBackup() {
   const tempDir = await makeTempDir("cios-backup-export-");
   const archiveName = buildBackupFileName();
-  const archivePath = path.join(tempDir, archiveName);
 
   try {
     await createSqlDump(path.join(tempDir, "backup.sql"));
     await createBackupManifest(tempDir);
     await copyUploadsTo(tempDir);
-    await execFileAsync("zip", ["-rq", archivePath, "backup.sql", "manifest.json", "uploads"], {
-      cwd: tempDir,
-    });
 
     return {
       fileName: archiveName,
       contentType: "application/zip",
-      buffer: await fs.readFile(archivePath),
+      buffer: await createZipBufferFromPaths(tempDir, ["backup.sql", "manifest.json", "uploads"]),
     };
   } finally {
     await fs.rm(tempDir, { recursive: true, force: true });
   }
 }
 
-async function validateBackupEntries(zipPath) {
-  const { stdout } = await execFileAsync("unzip", ["-Z1", zipPath], {
-    maxBuffer: 1024 * 1024 * 20,
-  });
-  const entries = stdout
-    .split("\n")
-    .map((item) => item.trim())
-    .filter(Boolean);
+function validateBackupEntries(archive) {
+  const entries = listZipEntries(archive);
 
   for (const entry of entries) {
     if (entry.startsWith("/") || entry.includes("..")) {
@@ -144,16 +135,13 @@ export async function importCmsBackupZip(buffer) {
   }
 
   const tempDir = await makeTempDir("cios-backup-import-");
-  const zipPath = path.join(tempDir, "backup.zip");
   const extractedDir = path.join(tempDir, "extracted");
 
   try {
-    await fs.writeFile(zipPath, buffer);
-    await validateBackupEntries(zipPath);
+    const archive = openZipArchive(buffer);
+    validateBackupEntries(archive);
     await fs.mkdir(extractedDir, { recursive: true });
-    await execFileAsync("unzip", ["-q", zipPath, "-d", extractedDir], {
-      maxBuffer: 1024 * 1024 * 100,
-    });
+    await extractZipArchive(archive, extractedDir);
 
     await resetDatabasePool();
     await importSqlDump(path.join(extractedDir, "backup.sql"));

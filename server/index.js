@@ -363,7 +363,9 @@ app.get("/api/admin/backups/export", requireAdmin, async (_req, res, next) => {
 app.post(
   "/api/admin/backups/import-binary",
   requireAdmin,
-  express.raw({ type: ["application/zip", "application/octet-stream"], limit: "500mb" }),
+  // This endpoint only accepts binary backup uploads, so parse the body as raw bytes
+  // regardless of the browser's platform-specific ZIP MIME type.
+  express.raw({ type: () => true, limit: "500mb" }),
   async (req, res, next) => {
     try {
       res.json(await importCmsBackupZip(req.body));

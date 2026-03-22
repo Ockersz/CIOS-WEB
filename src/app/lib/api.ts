@@ -388,7 +388,7 @@ export async function importAdminBackup(token: string, file: File) {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
-      "Content-Type": file.type || "application/zip",
+      "Content-Type": "application/octet-stream",
     },
     body: file,
   });
