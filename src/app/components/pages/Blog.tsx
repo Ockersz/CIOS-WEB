@@ -1,6 +1,7 @@
 import { motion } from 'motion/react';
 import { Calendar, User, ArrowRight, Search } from 'lucide-react';
 import { Sparkles } from '../Sparkles';
+import { ImageWithFallback } from '../figma/ImageWithFallback';
 import { useState } from 'react';
 import { Navigate } from 'react-router';
 import { useBlogPosts, useCmsPage } from '../../lib/api';
@@ -91,7 +92,14 @@ export function Blog() {
                 className="bg-white rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-all cursor-pointer group"
               >
                 <div className="bg-[var(--brand-accent)] h-48 relative overflow-hidden">
-                  <motion.div className="absolute inset-0 bg-black/20" whileHover={{ scale: 1.1 }} transition={{ duration: 0.3 }} />
+                  {post.image ? (
+                    <ImageWithFallback
+                      src={post.image}
+                      alt={post.title}
+                      className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    />
+                  ) : null}
+                  <div className="absolute inset-0 bg-black/20" />
                 </div>
                 <div className="p-6">
                   <div className="text-sm text-[var(--brand-accent)] mb-2">{post.category}</div>

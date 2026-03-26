@@ -1,11 +1,17 @@
-import { motion } from 'motion/react';
-import { useState } from 'react';
-import { Sparkles, Hand, LayoutGrid, Droplets } from 'lucide-react';
-import backgroundPattern from '../../assets/581d7eb1b818206890303d2b3a76c5414cdbbf5d.png';
-import beforeImage from '../../assets/373cecb1e82884e5333e7b3f0bbc95be03484f17.webp';
-import afterImage from '../../assets/11216e21214150f3e7991c8dc0ef75882077e7c7.webp';
+import { motion } from "motion/react";
+import { useState } from "react";
+import { Sparkles, Hand, LayoutGrid, Droplets } from "lucide-react";
+import backgroundPattern from "../../assets/581d7eb1b818206890303d2b3a76c5414cdbbf5d.png";
+import type { HomeBeforeAfterSection } from "../lib/homeContent";
+import { ImageWithFallback } from "./figma/ImageWithFallback";
 
-export function BeforeAfter() {
+const FEATURE_ICONS = [Sparkles, LayoutGrid, Droplets, Hand];
+
+export function BeforeAfter({
+  section,
+}: {
+  section: HomeBeforeAfterSection;
+}) {
   const [sliderPosition, setSliderPosition] = useState(50);
   const [isDragging, setIsDragging] = useState(false);
 
@@ -26,36 +32,19 @@ export function BeforeAfter() {
     setSliderPosition(Math.min(Math.max(percentage, 0), 100));
   };
 
-  const features = [
-    {
-      icon: Sparkles,
-      title: 'Deep Cleaning Magic',
-      color: 'var(--brand-accent)',
-    },
-    {
-      icon: LayoutGrid,
-      title: 'Tailored Solutions',
-      color: 'var(--brand-accent)',
-    },
-    {
-      icon: Droplets,
-      title: 'Sustainable Cleanliness',
-      color: 'var(--brand-accent)',
-    },
-    {
-      icon: Hand,
-      title: 'Quick and Efficient',
-      color: 'var(--brand-accent)',
-    },
-  ];
+  const features = section.features.map((feature, index) => ({
+    icon: FEATURE_ICONS[index] || Sparkles,
+    title: feature.title,
+    color: "var(--brand-accent)",
+  }));
 
   return (
-    <section 
+    <section
       className="py-20 relative overflow-hidden"
       style={{
         backgroundImage: `url(${backgroundPattern})`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
+        backgroundSize: "cover",
+        backgroundPosition: "center",
       }}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
@@ -69,13 +58,11 @@ export function BeforeAfter() {
           <div className="flex items-center justify-center gap-2 mb-4">
             <Sparkles className="w-5 h-5 text-[var(--brand-accent)]" />
             <span className="eyebrow-label text-[var(--brand-accent)]">
-              DARE TO DAZZLING
+              {section.eyebrow}
             </span>
           </div>
-          <h2 className="section-title text-4xl md:text-6xl text-gray-900 mb-4">
-            Amazing Evolution of
-            <br />
-            Your Office & Your Home
+          <h2 className="section-title text-4xl md:text-6xl text-gray-900 mb-4 whitespace-pre-line">
+            {section.title}
           </h2>
         </motion.div>
 
@@ -97,7 +84,7 @@ export function BeforeAfter() {
                 transition={{ delay: index * 0.1 }}
                 className="flex flex-col items-center lg:items-end text-center lg:text-right"
               >
-                <div 
+                <div
                   className="w-16 h-16 rounded-full flex items-center justify-center mb-3"
                   style={{ backgroundColor: `${feature.color}20` }}
                 >
@@ -132,24 +119,37 @@ export function BeforeAfter() {
               onClick={handleMove}
             >
               {/* After Image (Full) */}
-              <img
-                src={afterImage}
-                alt="After cleaning"
-                className="absolute inset-0 w-full h-full object-cover"
-                draggable={false}
-              />
+              <div
+                className="absolute inset-0 overflow-hidden"
+                style={{ clipPath: `inset(0 0 0 ${sliderPosition}%)` }}
+              >
+                <ImageWithFallback
+                  src={section.afterImage.src}
+                  alt={section.afterImage.alt}
+                  className="absolute inset-0 w-full h-full object-cover"
+                  draggable={false}
+                />
+
+                <div className="absolute top-4 right-4 bg-black/60 text-white px-3 py-1 rounded-full text-sm font-medium">
+                  {section.afterLabel}
+                </div>
+              </div>
 
               {/* Before Image (Clipped) */}
               <div
                 className="absolute inset-0 overflow-hidden"
                 style={{ clipPath: `inset(0 ${100 - sliderPosition}% 0 0)` }}
               >
-                <img
-                  src={beforeImage}
-                  alt="Before cleaning"
+                <ImageWithFallback
+                  src={section.beforeImage.src}
+                  alt={section.beforeImage.alt}
                   className="absolute inset-0 w-full h-full object-cover"
                   draggable={false}
                 />
+
+                <div className="absolute top-4 left-4 bg-black/60 text-white px-3 py-1 rounded-full text-sm font-medium">
+                  {section.beforeLabel}
+                </div>
               </div>
 
               {/* Slider Line */}
@@ -167,12 +167,6 @@ export function BeforeAfter() {
               </div>
 
               {/* Labels */}
-              <div className="absolute top-4 left-4 bg-black/60 text-white px-3 py-1 rounded-full text-sm font-medium">
-                Before
-              </div>
-              <div className="absolute top-4 right-4 bg-black/60 text-white px-3 py-1 rounded-full text-sm font-medium">
-                After
-              </div>
             </div>
 
             {/* Drag Instruction */}
@@ -182,7 +176,7 @@ export function BeforeAfter() {
               transition={{ delay: 1 }}
               className="text-center mt-4 text-gray-600 text-sm"
             >
-              Drag to compare
+              {section.dragInstruction}
             </motion.div>
           </motion.div>
 

@@ -79,6 +79,7 @@ export interface ServiceDetail extends ServiceSummary {
 export interface BlogPost {
   slug: string;
   title: string;
+  image: string;
   excerpt: string;
   category: string;
   dateLabel: string;

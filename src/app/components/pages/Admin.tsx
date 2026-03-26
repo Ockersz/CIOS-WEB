@@ -43,6 +43,7 @@ import {
   saveAdminSettings,
   uploadAdminImage,
 } from "../../lib/api";
+import { normalizeHomeBeforeAfterSection } from "../../lib/homeContent";
 import { applyThemeColors, getThemeColors, TYPOGRAPHY_PRESETS } from "../../lib/theme";
 import { CmsIcon } from "../CmsIcon";
 
@@ -1686,6 +1687,11 @@ function renderPageEditor(
   }
 
   if (page.slug === "home") {
+    const beforeAfterSection = normalizeHomeBeforeAfterSection(content.beforeAfterSection);
+
+    const updateBeforeAfterSection = (nextSection: typeof beforeAfterSection) =>
+      updateContent({ ...content, beforeAfterSection: nextSection });
+
     return (
       <div className="space-y-6">
         {renderHeroFields()}
@@ -1757,6 +1763,69 @@ function renderPageEditor(
             ))}
           </div>
         </SectionCard>
+        <SectionCard title="Before & After Comparison" description="Slider section shown on the home page, including the comparison labels and intro text.">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Field label="Section Label" value={beforeAfterSection.eyebrow} onChange={(value) => updateBeforeAfterSection({ ...beforeAfterSection, eyebrow: value })} />
+            <Field label="Drag Hint" value={beforeAfterSection.dragInstruction} onChange={(value) => updateBeforeAfterSection({ ...beforeAfterSection, dragInstruction: value })} />
+            <Field label="Before Label" value={beforeAfterSection.beforeLabel} onChange={(value) => updateBeforeAfterSection({ ...beforeAfterSection, beforeLabel: value })} />
+            <Field label="After Label" value={beforeAfterSection.afterLabel} onChange={(value) => updateBeforeAfterSection({ ...beforeAfterSection, afterLabel: value })} />
+          </div>
+          <div className="mt-4">
+            <TextAreaField label="Section Title" value={beforeAfterSection.title} onChange={(value) => updateBeforeAfterSection({ ...beforeAfterSection, title: value })} rows={3} />
+          </div>
+        </SectionCard>
+        <SectionCard title="Before & After Feature Points" description="Short feature titles shown around the comparison slider.">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {beforeAfterSection.features.map((feature, index) => (
+              <Field
+                key={index}
+                label={`Feature ${index + 1} Title`}
+                value={feature.title}
+                onChange={(value) => {
+                  const next = [...beforeAfterSection.features];
+                  next[index] = { ...next[index], title: value };
+                  updateBeforeAfterSection({ ...beforeAfterSection, features: next });
+                }}
+              />
+            ))}
+          </div>
+        </SectionCard>
+        <SectionCard title="Before & After Images" description="Images and descriptions used in the comparison slider.">
+          <div className="space-y-4">
+            <div className="rounded-2xl border border-[var(--brand-border)] p-4 space-y-3">
+              <ImagePickerField label="Before Image" value={beforeAfterSection.beforeImage.src} onPick={() => {
+                openImagePicker("Choose before image", beforeAfterSection.beforeImage.src, (value) => {
+                  updateBeforeAfterSection({
+                    ...beforeAfterSection,
+                    beforeImage: { ...beforeAfterSection.beforeImage, src: value },
+                  });
+                });
+              }} />
+              <Field label="Before Image Description" value={beforeAfterSection.beforeImage.alt} onChange={(value) => {
+                updateBeforeAfterSection({
+                  ...beforeAfterSection,
+                  beforeImage: { ...beforeAfterSection.beforeImage, alt: value },
+                });
+              }} />
+            </div>
+            <div className="rounded-2xl border border-[var(--brand-border)] p-4 space-y-3">
+              <ImagePickerField label="After Image" value={beforeAfterSection.afterImage.src} onPick={() => {
+                openImagePicker("Choose after image", beforeAfterSection.afterImage.src, (value) => {
+                  updateBeforeAfterSection({
+                    ...beforeAfterSection,
+                    afterImage: { ...beforeAfterSection.afterImage, src: value },
+                  });
+                });
+              }} />
+              <Field label="After Image Description" value={beforeAfterSection.afterImage.alt} onChange={(value) => {
+                updateBeforeAfterSection({
+                  ...beforeAfterSection,
+                  afterImage: { ...beforeAfterSection.afterImage, alt: value },
+                });
+              }} />
+            </div>
+          </div>
+        </SectionCard>
         <SectionCard title="Testimonials" description="Customer review cards shown on the home page.">
           <div className="space-y-4">
             {(content.testimonials || []).map((item: any, index: number) => (
@@ -1783,6 +1852,20 @@ function renderPageEditor(
                   <Field label="Star Rating" value={item.rating || 5} onChange={(value) => {
                     const next = [...content.testimonials];
                     next[index] = { ...next[index], rating: Number(value || 0) };
+                    updateContent({ ...content, testimonials: next });
+                  }} />
+                </div>
+                <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <ImagePickerField label="Company Logo" value={item.logo || ""} onPick={() => {
+                    openImagePicker("Choose testimonial company logo", item.logo || "", (value) => {
+                      const next = [...content.testimonials];
+                      next[index] = { ...next[index], logo: value };
+                      updateContent({ ...content, testimonials: next });
+                    });
+                  }} />
+                  <Field label="Logo Description" value={item.logoAlt || ""} onChange={(value) => {
+                    const next = [...content.testimonials];
+                    next[index] = { ...next[index], logoAlt: value };
                     updateContent({ ...content, testimonials: next });
                   }} />
                 </div>
@@ -3384,6 +3467,7 @@ export function Admin() {
                       const fresh = {
                         slug: linkName,
                         title: "New Post",
+                        image: "",
                         excerpt: "",
                         category: "General",
                         dateLabel: new Date().toLocaleDateString(),
@@ -3458,7 +3542,7 @@ export function Admin() {
                       note={currentGuide.note}
                     />
                   ) : null}
-                  <SectionCard title="Blog Post Details" description="Edit the visible details for this blog card. The page link name is created automatically for new posts.">
+                  <SectionCard title="Blog Post Details" description="Edit the visible details and cover image for this blog card. The page link name is created automatically for new posts.">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <Field label="Page Link Name" value={selectedPost.slug} disabled={!isNewPost} onChange={(value) => {
                         setPostsDraft((current) =>
@@ -3511,6 +3595,15 @@ export function Admin() {
                         setPostsDraft((current) =>
                           current.map((post) => post.slug === selectedPost.slug ? { ...post, sortOrder: Number(value || 0) } : post),
                         );
+                      }} />
+                    </div>
+                    <div className="mt-4 max-w-md">
+                      <ImagePickerField label="Blog Card Image" value={selectedPost.image || ""} onPick={() => {
+                        openImagePicker("Choose blog card image", selectedPost.image || "", (value) => {
+                          setPostsDraft((current) =>
+                            current.map((post) => post.slug === selectedPost.slug ? { ...post, image: value } : post),
+                          );
+                        });
                       }} />
                     </div>
                     <div className="mt-4">

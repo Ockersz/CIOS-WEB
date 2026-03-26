@@ -353,6 +353,7 @@ export async function initializeDatabase() {
       id INT AUTO_INCREMENT PRIMARY KEY,
       slug VARCHAR(255) NOT NULL UNIQUE,
       title VARCHAR(255) NOT NULL,
+      image VARCHAR(500),
       excerpt TEXT NOT NULL,
       category VARCHAR(100) NOT NULL,
       date_label VARCHAR(100) NOT NULL,
@@ -386,6 +387,7 @@ export async function initializeDatabase() {
 
   await ensureColumnExists(db, "services", "sort_order", "INT NOT NULL DEFAULT 0");
   await ensureColumnExists(db, "services", "show_on_home", "BOOLEAN DEFAULT TRUE");
+  await ensureColumnExists(db, "blog_posts", "image", "VARCHAR(500) NULL");
   await ensureColumnExists(db, "image_assets", "content_hash", "CHAR(64) NULL");
   await ensureServiceSortOrder(db);
 
@@ -484,11 +486,12 @@ async function seedIfEmpty(db) {
 
   for (const post of seedContent.blogPosts) {
     await db.query(
-      `INSERT INTO blog_posts (slug, title, excerpt, category, date_label, author, read_time, sort_order)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO blog_posts (slug, title, image, excerpt, category, date_label, author, read_time, sort_order)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         post.slug,
         post.title,
+        post.image || null,
         post.excerpt,
         post.category,
         post.dateLabel,
@@ -591,13 +594,14 @@ export async function getServiceById(id) {
 export async function getBlogPosts() {
   const db = await getPool();
   const [rows] = await db.query(
-    `SELECT slug, title, excerpt, category, date_label, author, read_time
+    `SELECT slug, title, image, excerpt, category, date_label, author, read_time
      FROM blog_posts ORDER BY sort_order ASC, id ASC`,
   );
 
   return rows.map((post) => ({
     slug: post.slug,
     title: post.title,
+    image: post.image || "",
     excerpt: post.excerpt,
     category: post.category,
     dateLabel: post.date_label,
@@ -683,13 +687,14 @@ export async function getAllServicesWithItems() {
 export async function getAllBlogPostsAdmin() {
   const db = await getPool();
   const [rows] = await db.query(
-    `SELECT slug, title, excerpt, category, date_label, author, read_time, sort_order
+    `SELECT slug, title, image, excerpt, category, date_label, author, read_time, sort_order
      FROM blog_posts ORDER BY sort_order ASC, id ASC`,
   );
 
   return rows.map((post) => ({
     slug: post.slug,
     title: post.title,
+    image: post.image || "",
     excerpt: post.excerpt,
     category: post.category,
     dateLabel: post.date_label,
@@ -813,11 +818,12 @@ export async function reorderServices(serviceIds) {
 export async function createBlogPost(post) {
   const db = await getPool();
   await db.query(
-    `INSERT INTO blog_posts (slug, title, excerpt, category, date_label, author, read_time, sort_order)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO blog_posts (slug, title, image, excerpt, category, date_label, author, read_time, sort_order)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       post.slug,
       post.title,
+      post.image || null,
       post.excerpt,
       post.category,
       post.dateLabel,
@@ -832,10 +838,11 @@ export async function updateBlogPost(slug, post) {
   const db = await getPool();
   await db.query(
     `UPDATE blog_posts
-     SET title = ?, excerpt = ?, category = ?, date_label = ?, author = ?, read_time = ?, sort_order = ?
+     SET title = ?, image = ?, excerpt = ?, category = ?, date_label = ?, author = ?, read_time = ?, sort_order = ?
      WHERE slug = ?`,
     [
       post.title,
+      post.image || null,
       post.excerpt,
       post.category,
       post.dateLabel,

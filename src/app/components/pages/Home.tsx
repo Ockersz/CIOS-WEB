@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import heroBackgroundImage from "../../../assets/7ca8818179e3f3b71f754641ebc815ec081dd833.webp";
 import { useBlogPosts, useCmsPage, useSiteSettings } from "../../lib/api";
+import { normalizeHomeBeforeAfterSection } from "../../lib/homeContent";
 import { Seo } from "../Seo";
 import { buildPageTitle, createLocalBusinessStructuredData, trimSeoDescription } from "../../lib/seo";
 
@@ -88,6 +89,7 @@ export function Home() {
   const careersSection = page?.content?.careersSection;
   const previewPosts = (blogPosts || []).slice(0, 3);
   const heroImage = page?.content?.heroImage || heroBackgroundImage;
+  const beforeAfterSection = normalizeHomeBeforeAfterSection(page?.content?.beforeAfterSection);
   const isBlogVisible = blogPage?.content?.isVisible !== false;
   const seoDescription = trimSeoDescription(page?.heroSubtitle || business?.shortDescription);
 
@@ -229,7 +231,7 @@ export function Home() {
       </DeferredSection>
 
       <DeferredSection minHeight={760}>
-        <LazyBeforeAfter />
+        <LazyBeforeAfter section={beforeAfterSection} />
       </DeferredSection>
 
       <section className="py-20 bg-[var(--brand-brown)] text-white">
@@ -253,9 +255,20 @@ export function Home() {
                   ))}
                 </div>
                 <p className="body-copy text-gray-700 mb-6 italic">"{testimonial.text}"</p>
-                <div>
-                  <div className="text-lg">{testimonial.name}</div>
-                  <div className="text-sm text-gray-500">{testimonial.role}</div>
+                <div className="flex items-center gap-4">
+                  {testimonial.logo ? (
+                    <div className="h-14 w-14 shrink-0 overflow-hidden rounded-2xl border border-gray-200 bg-white p-2">
+                      <ImageWithFallback
+                        src={testimonial.logo}
+                        alt={testimonial.logoAlt || testimonial.role || testimonial.name || "Company logo"}
+                        className="h-full w-full object-contain"
+                      />
+                    </div>
+                  ) : null}
+                  <div className="min-w-0">
+                    <div className="text-lg">{testimonial.name}</div>
+                    <div className="text-sm text-gray-500">{testimonial.role}</div>
+                  </div>
                 </div>
               </motion.div>
             ))}
@@ -372,7 +385,15 @@ export function Home() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               {previewPosts.map((post) => (
                 <motion.div key={post.slug} className="bg-gray-50 rounded-2xl overflow-hidden hover:shadow-lg transition-shadow cursor-pointer">
-                  <div className="bg-gray-200 h-48" />
+                  <div className="bg-gray-200 h-48 relative overflow-hidden">
+                    {post.image ? (
+                      <ImageWithFallback
+                        src={post.image}
+                        alt={post.title}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : null}
+                  </div>
                   <div className="p-6">
                     <div className="text-sm text-[var(--brand-accent)] mb-2">{post.category}</div>
                     <h3 className="text-xl mb-2">{post.title}</h3>
