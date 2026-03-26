@@ -21,6 +21,7 @@ import {
   BlogPost,
   CmsPage,
   ImageAsset,
+  ImageAssetUsage,
   SiteSettings,
   ServiceDetail,
   adminLogin,
@@ -28,10 +29,12 @@ import {
   changeAdminPassword,
   createAdminBlogPost,
   createAdminService,
+  deleteAdminImage,
   deleteAdminBlogPost,
   deleteAdminService,
   exportAdminBackup,
   getAdminBootstrap,
+  getAdminImageUsage,
   importAdminBackup,
   importExistingAdminImages,
   renameAdminImage,
@@ -65,6 +68,15 @@ type WorkspaceGuide = {
   hints: string[];
   links: PreviewLink[];
   note?: string;
+};
+
+type ImageDeleteDialogState = {
+  asset: ImageAsset;
+  usages: ImageAssetUsage[];
+  loading: boolean;
+  deleting: boolean;
+  selectedReplacementId: number | null;
+  error: string | null;
 };
 
 const ADMIN_SECTION_META: Record<
@@ -1194,6 +1206,237 @@ function ImagePickerModalContent({
   );
 }
 
+function getImageUsageTypeLabel(resourceType: ImageAssetUsage["resourceType"]) {
+  const labels: Record<ImageAssetUsage["resourceType"], string> = {
+    settings: "Site Settings",
+    page: "Page",
+    service: "Service",
+    blog: "Blog Post",
+  };
+  return labels[resourceType];
+}
+
+function ImageDeleteModalContent({
+  asset,
+  usages,
+  loading,
+  deleting,
+  error,
+  replacementAssets,
+  selectedReplacementId,
+  onSelectReplacement,
+  onUploadReplacement,
+  onDelete,
+}: {
+  asset: ImageAsset;
+  usages: ImageAssetUsage[];
+  loading: boolean;
+  deleting: boolean;
+  error: string | null;
+  replacementAssets: ImageAsset[];
+  selectedReplacementId: number | null;
+  onSelectReplacement: (id: number) => void;
+  onUploadReplacement: (file: File) => Promise<void>;
+  onDelete: () => Promise<void>;
+}) {
+  const [search, setSearch] = useState("");
+  const requiresReplacement = usages.length > 0;
+  const filteredReplacementAssets = replacementAssets.filter((candidate) =>
+    `${candidate.name} ${candidate.storedName}`
+      .toLowerCase()
+      .includes(search.trim().toLowerCase()),
+  );
+  const canDelete =
+    !loading &&
+    !deleting &&
+    !error &&
+    (!requiresReplacement || selectedReplacementId !== null);
+
+  return (
+    <div className="space-y-6">
+      <div className="grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
+        <div className="rounded-3xl border border-[var(--brand-border)] bg-[var(--brand-surface-soft)] p-4 space-y-4">
+          <div className="text-xs uppercase tracking-[0.2em] text-[var(--brand-text-soft)]">
+            Selected Image
+          </div>
+          <div className="aspect-[4/3] rounded-2xl overflow-hidden bg-[var(--brand-surface)] border border-[var(--brand-border)]">
+            <img src={asset.url} alt={asset.name} className="w-full h-full object-cover" />
+          </div>
+          <div>
+            <div className="font-medium text-lg">{asset.name}</div>
+            <div className="text-sm text-[var(--brand-text-muted)] break-all mt-1">
+              {asset.url}
+            </div>
+            <div className="text-sm text-[var(--brand-text-muted)] mt-2">
+              {formatBytes(asset.sizeBytes)}
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          {loading ? (
+            <div className="rounded-3xl border border-[var(--brand-border)] bg-[var(--brand-surface-soft)] p-5 text-sm text-[var(--brand-text-muted)] flex items-center gap-3">
+              <LoaderCircle className="h-4 w-4 animate-spin" />
+              Checking where this image is used...
+            </div>
+          ) : error ? (
+            <div className="rounded-3xl border border-red-200 bg-red-50 p-5 text-sm text-red-700">
+              {error}
+            </div>
+          ) : requiresReplacement ? (
+            <div className="rounded-3xl border border-amber-200 bg-amber-50 p-5">
+              <div className="text-sm font-medium text-amber-900">
+                This image is currently used in {usages.length} place{usages.length === 1 ? "" : "s"}.
+              </div>
+              <div className="text-sm text-amber-800 mt-1">
+                Pick another image below and the CMS will replace every usage before deleting this file.
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-3xl border border-emerald-200 bg-emerald-50 p-5">
+              <div className="text-sm font-medium text-emerald-900">
+                This image is not being used anywhere in the CMS.
+              </div>
+              <div className="text-sm text-emerald-800 mt-1">
+                You can delete it safely.
+              </div>
+            </div>
+          )}
+
+          <div className="rounded-3xl border border-[var(--brand-border)] bg-[var(--brand-surface)] p-5">
+            <div className="flex items-center justify-between gap-4 mb-4">
+              <div>
+                <div className="text-lg font-medium">Usage List</div>
+                <div className="text-sm text-[var(--brand-text-muted)]">
+                  Every place that currently points to this image.
+                </div>
+              </div>
+              <div className="rounded-full bg-[var(--brand-secondary-fill)] px-3 py-1 text-sm text-[var(--brand-text-muted)]">
+                {loading ? "Checking..." : `${usages.length} usage${usages.length === 1 ? "" : "s"}`}
+              </div>
+            </div>
+
+            {loading ? null : usages.length === 0 ? (
+              <div className="text-sm text-[var(--brand-text-muted)]">
+                No current usages found.
+              </div>
+            ) : (
+              <div className="space-y-3 max-h-[260px] overflow-y-auto pr-1">
+                {usages.map((usage, index) => (
+                  <div
+                    key={`${usage.resourceType}-${usage.resourceId}-${usage.path}-${index}`}
+                    className="rounded-2xl border border-[var(--brand-border)] bg-[var(--brand-surface-soft)] p-4"
+                  >
+                    <div className="text-sm font-medium text-[var(--brand-text)]">
+                      {getImageUsageTypeLabel(usage.resourceType)}: {usage.resourceLabel}
+                    </div>
+                    <div className="text-sm text-[var(--brand-text-muted)] mt-1">
+                      {usage.path}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="rounded-3xl border border-[var(--brand-border)] bg-[var(--brand-surface)] p-5">
+            <div className="flex flex-wrap gap-3 items-end mb-4">
+              <div className="flex-1 min-w-[240px]">
+                <Field
+                  label="Replacement Image Search"
+                  value={search}
+                  onChange={setSearch}
+                  placeholder="Search image names"
+                />
+              </div>
+              <label className="px-4 py-3 rounded-2xl bg-[var(--brand-brown)] text-white cursor-pointer">
+                Upload Replacement
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={async (event) => {
+                    const input = event.currentTarget;
+                    const file = input.files?.[0];
+                    if (!file) return;
+                    try {
+                      await onUploadReplacement(file);
+                    } catch (uploadError) {
+                      alert(
+                        uploadError instanceof Error
+                          ? uploadError.message
+                          : "Failed to upload replacement image",
+                      );
+                    } finally {
+                      input.value = "";
+                    }
+                  }}
+                />
+              </label>
+            </div>
+
+            <div className="text-sm text-[var(--brand-text-muted)] mb-4">
+              {requiresReplacement
+                ? "Choose the image that should replace the current one everywhere it is used."
+                : "Replacement is optional here because this image is not currently used anywhere."}
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 max-h-[320px] overflow-y-auto">
+              {filteredReplacementAssets.length === 0 ? (
+                <div className="col-span-full text-sm text-[var(--brand-text-muted)]">
+                  {replacementAssets.length === 0
+                    ? "No other images are available yet. Upload one to use it as the replacement."
+                    : "No matching images found."}
+                </div>
+              ) : null}
+
+              {filteredReplacementAssets.map((candidate) => (
+                <button
+                  key={candidate.id}
+                  type="button"
+                  onClick={() => onSelectReplacement(candidate.id)}
+                  className={`rounded-2xl border p-3 text-left ${
+                    selectedReplacementId === candidate.id
+                      ? "border-[var(--brand-brown)] bg-[var(--brand-canvas-soft)]"
+                      : "border-[var(--brand-border)] bg-[var(--brand-surface)]"
+                  }`}
+                >
+                  <div className="aspect-[4/3] rounded-2xl overflow-hidden bg-[var(--brand-surface)] border border-[var(--brand-border)] mb-3">
+                    <img
+                      src={candidate.url}
+                      alt={candidate.name}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <div className="font-medium truncate">{candidate.name}</div>
+                  <div className="text-sm text-[var(--brand-text-muted)]">
+                    {formatBytes(candidate.sizeBytes)}
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex justify-end">
+        <button
+          type="button"
+          disabled={!canDelete}
+          onClick={onDelete}
+          className="px-5 py-3 rounded-2xl bg-[var(--brand-brown)] text-white disabled:opacity-60"
+        >
+          {deleting
+            ? "Deleting..."
+            : requiresReplacement
+              ? "Replace And Delete Image"
+              : "Delete Image"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function getPageTitle(slug: string) {
   const titles: Record<string, string> = {
     home: "Home Page",
@@ -1972,6 +2215,9 @@ export function Admin() {
     currentValue: string;
     onSelect: (value: string) => void;
   } | null>(null);
+  const [imageDeleteDialog, setImageDeleteDialog] = useState<ImageDeleteDialogState | null>(
+    null,
+  );
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: "",
     newPassword: "",
@@ -2040,15 +2286,99 @@ export function Admin() {
     setImagePicker({ title, currentValue, onSelect });
   }
 
-  async function handleImageUpload(file: File, autoSelect?: (url: string) => void) {
-    if (!token) return;
+  async function handleImageUpload(file: File, autoSelect?: (asset: ImageAsset) => void) {
+    if (!token) return [];
     const uploaded = await uploadAdminImage(token, file);
     setImageAssetsDraft(uploaded);
     const latest = uploaded[0];
     if (latest && autoSelect) {
-      autoSelect(latest.url);
+      autoSelect(latest);
     }
     flashStatus("Image uploaded to library");
+    return uploaded;
+  }
+
+  async function openImageDeleteDialog(asset: ImageAsset) {
+    if (!token) return;
+
+    setImageDeleteDialog({
+      asset,
+      usages: [],
+      loading: true,
+      deleting: false,
+      selectedReplacementId: null,
+      error: null,
+    });
+
+    try {
+      const usages = await getAdminImageUsage(token, asset.id);
+      setImageDeleteDialog((current) =>
+        current && current.asset.id === asset.id
+          ? {
+              ...current,
+              usages,
+              loading: false,
+              error: null,
+            }
+          : current,
+      );
+    } catch (error) {
+      setImageDeleteDialog((current) =>
+        current && current.asset.id === asset.id
+          ? {
+              ...current,
+              loading: false,
+              error:
+                error instanceof Error ? error.message : "Failed to check where this image is used",
+            }
+          : current,
+      );
+    }
+  }
+
+  async function handleDeleteImage() {
+    if (!token || !imageDeleteDialog) return;
+    if (imageDeleteDialog.usages.length > 0 && !imageDeleteDialog.selectedReplacementId) {
+      alert("Choose a replacement image before deleting this one.");
+      return;
+    }
+
+    setImageDeleteDialog((current) =>
+      current
+        ? {
+            ...current,
+            deleting: true,
+          }
+        : current,
+    );
+
+    try {
+      const result = await deleteAdminImage(
+        token,
+        imageDeleteDialog.asset.id,
+        imageDeleteDialog.selectedReplacementId,
+      );
+      setImageAssetsDraft(result.imageAssets);
+      setImageDeleteDialog(null);
+      await refreshAdminData(token);
+      flashStatus(
+        result.replacedUsageCount > 0
+          ? `Image replaced in ${result.replacedUsageCount} place${
+              result.replacedUsageCount === 1 ? "" : "s"
+            } and deleted`
+          : "Image deleted",
+      );
+    } catch (error) {
+      setImageDeleteDialog((current) =>
+        current
+          ? {
+              ...current,
+              deleting: false,
+            }
+          : current,
+      );
+      alert(error instanceof Error ? error.message : "Failed to delete image");
+    }
   }
 
   async function handleLogin(e: FormEvent) {
@@ -2081,6 +2411,7 @@ export function Admin() {
     setBootstrap(null);
     setSavingKey(null);
     setStatusMessage(null);
+    setImageDeleteDialog(null);
   }
 
   if (!token) {
@@ -3704,22 +4035,33 @@ export function Admin() {
                     <div className="text-xs uppercase tracking-[0.2em] text-[var(--brand-text-soft)]">
                       {formatBytes(asset.sizeBytes)}
                     </div>
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        if (!token) return;
-                        try {
-                          const renamed = await renameAdminImage(token, asset.id, asset.name);
-                          setImageAssetsDraft(renamed);
-                          flashStatus("Image name updated");
-                        } catch (error) {
-                          alert(error instanceof Error ? error.message : "Failed to rename image");
-                        }
-                      }}
-                      className="w-full px-4 py-3 rounded-2xl bg-[var(--brand-brown)] text-white"
-                    >
-                      Save Image Name
-                    </button>
+                    <div className="grid gap-3">
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          if (!token) return;
+                          try {
+                            const renamed = await renameAdminImage(token, asset.id, asset.name);
+                            setImageAssetsDraft(renamed);
+                            flashStatus("Image name updated");
+                          } catch (error) {
+                            alert(error instanceof Error ? error.message : "Failed to rename image");
+                          }
+                        }}
+                        className="w-full px-4 py-3 rounded-2xl bg-[var(--brand-brown)] text-white"
+                      >
+                        Save Image Name
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          openImageDeleteDialog(asset);
+                        }}
+                        className="w-full px-4 py-3 rounded-2xl bg-[var(--brand-secondary-fill)] text-[var(--brand-text)]"
+                      >
+                        Delete Or Replace
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -3861,11 +4203,58 @@ export function Admin() {
               setImagePicker(null);
             }}
             onUpload={async (file) => {
-              await handleImageUpload(file, (url) => {
-                imagePicker.onSelect(url);
+              await handleImageUpload(file, (asset) => {
+                imagePicker.onSelect(asset.url);
                 setImagePicker(null);
               });
             }}
+          />
+        </ModalShell>
+      ) : null}
+
+      {imageDeleteDialog ? (
+        <ModalShell
+          title={`Delete Or Replace: ${imageDeleteDialog.asset.name}`}
+          onClose={() => {
+            if (!imageDeleteDialog.deleting) {
+              setImageDeleteDialog(null);
+            }
+          }}
+        >
+          <ImageDeleteModalContent
+            key={imageDeleteDialog.asset.id}
+            asset={imageDeleteDialog.asset}
+            usages={imageDeleteDialog.usages}
+            loading={imageDeleteDialog.loading}
+            deleting={imageDeleteDialog.deleting}
+            error={imageDeleteDialog.error}
+            replacementAssets={imageAssetsDraft.filter(
+              (asset) => asset.id !== imageDeleteDialog.asset.id,
+            )}
+            selectedReplacementId={imageDeleteDialog.selectedReplacementId}
+            onSelectReplacement={(id) => {
+              setImageDeleteDialog((current) =>
+                current
+                  ? {
+                      ...current,
+                      selectedReplacementId: id,
+                    }
+                  : current,
+              );
+            }}
+            onUploadReplacement={async (file) => {
+              await handleImageUpload(file, (asset) => {
+                setImageDeleteDialog((current) =>
+                  current
+                    ? {
+                        ...current,
+                        selectedReplacementId: asset.id,
+                      }
+                    : current,
+                );
+              });
+            }}
+            onDelete={handleDeleteImage}
           />
         </ModalShell>
       ) : null}

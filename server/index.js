@@ -7,10 +7,12 @@ import { buildRobotsTxt, buildSitemapXml, renderSeoHtml } from "./seo.js";
 import {
   createBlogPost,
   createService,
+  deleteImageAsset,
   deleteBlogPost,
   deleteService,
   getAdminBootstrap,
   getBlogPosts,
+  getImageAssetUsage,
   getImageAssets,
   getPageBySlug,
   getServiceById,
@@ -341,6 +343,24 @@ app.put("/api/admin/images/:id", requireAdmin, async (req, res, next) => {
   }
 });
 
+app.get("/api/admin/images/:id/usage", requireAdmin, async (req, res, next) => {
+  try {
+    res.json(await getImageAssetUsage(req.params.id));
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.delete("/api/admin/images/:id", requireAdmin, async (req, res, next) => {
+  try {
+    res.json(
+      await deleteImageAsset(req.params.id, req.body?.replacementImageId ?? null),
+    );
+  } catch (error) {
+    next(error);
+  }
+});
+
 app.post("/api/admin/images/import-existing", requireAdmin, async (_req, res, next) => {
   try {
     res.json(await importRemoteImagesIntoLibrary());
@@ -409,6 +429,11 @@ app.use((error, _req, res, _next) => {
   if (error?.type === "entity.too.large") {
     return res.status(413).json({
       message: "Image upload is too large. Please use a smaller image file.",
+    });
+  }
+  if (Number.isInteger(error?.statusCode)) {
+    return res.status(error.statusCode).json({
+      message: error instanceof Error ? error.message : String(error),
     });
   }
   res.status(500).json({

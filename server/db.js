@@ -28,6 +28,12 @@ const DEFAULT_ADMIN_USERNAME = process.env.ADMIN_USERNAME || "admin";
 const DEFAULT_ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin123";
 const IMAGE_KEYS = new Set(["image", "heroImage", "detailImage", "src", "logo"]);
 
+function createRequestError(statusCode, message) {
+  const error = new Error(message);
+  error.statusCode = statusCode;
+  return error;
+}
+
 function parseJson(value) {
   if (!value) return null;
   if (typeof value !== "string") return value;
@@ -44,6 +50,19 @@ function hashPassword(password) {
 
 function isRemoteImageUrl(value) {
   return typeof value === "string" && /^https?:\/\//i.test(value);
+}
+
+function trailContainsImageKey(trail) {
+  return trail.some((segment) => typeof segment === "string" && IMAGE_KEYS.has(segment));
+}
+
+function formatContentPath(trail) {
+  return trail.reduce((path, segment) => {
+    if (typeof segment === "number") {
+      return `${path}[${segment}]`;
+    }
+    return path ? `${path}.${segment}` : segment;
+  }, "");
 }
 
 function collectRemoteImageUrls(value, trail = [], output = new Set()) {
@@ -64,9 +83,37 @@ function collectRemoteImageUrls(value, trail = [], output = new Set()) {
   if (
     typeof value === "string" &&
     isRemoteImageUrl(value) &&
-    trail.some((key) => IMAGE_KEYS.has(key))
+    trailContainsImageKey(trail)
   ) {
     output.add(value);
+  }
+
+  return output;
+}
+
+function collectImageMatchPaths(value, matcher, trail = [], output = []) {
+  if (!value) return output;
+
+  if (Array.isArray(value)) {
+    value.forEach((item, index) =>
+      collectImageMatchPaths(item, matcher, [...trail, index], output),
+    );
+    return output;
+  }
+
+  if (typeof value === "object") {
+    Object.entries(value).forEach(([key, child]) => {
+      collectImageMatchPaths(child, matcher, [...trail, key], output);
+    });
+    return output;
+  }
+
+  if (
+    typeof value === "string" &&
+    trailContainsImageKey(trail) &&
+    matcher(value)
+  ) {
+    output.push(formatContentPath(trail));
   }
 
   return output;
@@ -88,7 +135,7 @@ function replaceImageUrls(value, urlMap, trail = []) {
 
   if (
     typeof value === "string" &&
-    trail.some((key) => IMAGE_KEYS.has(key)) &&
+    trailContainsImageKey(trail) &&
     urlMap.has(value)
   ) {
     return urlMap.get(value);
@@ -952,6 +999,131 @@ export async function renameImageAsset(id, name) {
   return getImageAssets();
 }
 
+async function getImageAssetRowById(db, id) {
+  const [rows] = await db.query(
+    `SELECT id, display_name, stored_name, url, mime_type, size_bytes, source_url, content_hash
+     FROM image_assets WHERE id = ? LIMIT 1`,
+    [id],
+  );
+  return rows[0] || null;
+}
+
+async function collectPersistedImageUsages(imageUrl) {
+  const usages = [];
+  const [settings, pages, services, blogPosts] = await Promise.all([
+    getSiteSettings(),
+    getAllPages(),
+    getAllServicesWithItems(),
+    getAllBlogPostsAdmin(),
+  ]);
+
+  collectImageMatchPaths(settings, (value) => value === imageUrl).forEach((path) => {
+    usages.push({
+      resourceType: "settings",
+      resourceId: "global",
+      resourceLabel: "Site Settings",
+      path,
+    });
+  });
+
+  pages.forEach((page) => {
+    collectImageMatchPaths(page.content, (value) => value === imageUrl, ["content"]).forEach(
+      (path) => {
+        usages.push({
+          resourceType: "page",
+          resourceId: page.slug,
+          resourceLabel: page.title || page.slug,
+          path,
+        });
+      },
+    );
+  });
+
+  services.forEach((service) => {
+    collectImageMatchPaths(service, (value) => value === imageUrl).forEach((path) => {
+      usages.push({
+        resourceType: "service",
+        resourceId: service.id,
+        resourceLabel: service.title || service.id,
+        path,
+      });
+    });
+  });
+
+  blogPosts.forEach((post) => {
+    collectImageMatchPaths(post, (value) => value === imageUrl).forEach((path) => {
+      usages.push({
+        resourceType: "blog",
+        resourceId: post.slug,
+        resourceLabel: post.title || post.slug,
+        path,
+      });
+    });
+  });
+
+  return usages;
+}
+
+export async function getImageAssetUsage(id) {
+  const db = await getPool();
+  const asset = await getImageAssetRowById(db, id);
+  if (!asset) {
+    throw createRequestError(404, "Image not found");
+  }
+
+  return collectPersistedImageUsages(asset.url);
+}
+
+export async function deleteImageAsset(id, replacementImageId = null) {
+  const db = await getPool();
+  const asset = await getImageAssetRowById(db, id);
+  if (!asset) {
+    throw createRequestError(404, "Image not found");
+  }
+
+  let replacement = null;
+  if (
+    replacementImageId !== null &&
+    replacementImageId !== undefined &&
+    String(replacementImageId).trim() !== ""
+  ) {
+    replacement = await getImageAssetRowById(db, replacementImageId);
+    if (!replacement) {
+      throw createRequestError(404, "Replacement image not found");
+    }
+    if (Number(replacement.id) === Number(asset.id)) {
+      throw createRequestError(400, "Choose a different replacement image");
+    }
+  }
+
+  const usages = await collectPersistedImageUsages(asset.url);
+  if (usages.length > 0 && !replacement) {
+    throw createRequestError(
+      400,
+      "This image is in use on the website. Choose a replacement image before deleting it.",
+    );
+  }
+
+  if (replacement && usages.length > 0) {
+    await syncImageUrlReferences(new Map([[asset.url, replacement.url]]));
+  }
+
+  await db.query(`DELETE FROM image_assets WHERE id = ?`, [id]);
+
+  const [rows] = await db.query(
+    `SELECT COUNT(*) AS count FROM image_assets WHERE stored_name = ?`,
+    [asset.stored_name],
+  );
+  if (!rows[0]?.count) {
+    await removeStoredImageAsset(asset.stored_name);
+  }
+
+  return {
+    imageAssets: await getImageAssets(),
+    replacedUsageCount: usages.length,
+  };
+}
+
 async function findImageAssetBySourceUrl(db, sourceUrl) {
   const [rows] = await db.query(
     `SELECT id, display_name, stored_name, url, mime_type, size_bytes, content_hash
@@ -1000,6 +1172,7 @@ async function syncImageUrlReferences(urlMap) {
   const currentSettings = await getSiteSettings();
   const currentPages = await getAllPages();
   const currentServices = await getAllServicesWithItems();
+  const currentBlogPosts = await getAllBlogPostsAdmin();
   await updateSiteSettings(replaceImageUrls(currentSettings, urlMap));
 
   for (const page of currentPages) {
@@ -1011,6 +1184,10 @@ async function syncImageUrlReferences(urlMap) {
 
   for (const service of currentServices) {
     await updateService(service.id, replaceImageUrls(service, urlMap));
+  }
+
+  for (const post of currentBlogPosts) {
+    await updateBlogPost(post.slug, replaceImageUrls(post, urlMap));
   }
 }
 
@@ -1133,15 +1310,18 @@ export async function importRemoteImagesIntoLibrary() {
     ...collectRemoteImageUrls(seedContent.siteSettings),
     ...seedContent.pages.flatMap((page) => [...collectRemoteImageUrls(page.content)]),
     ...seedContent.services.flatMap((service) => [...collectRemoteImageUrls(service)]),
+    ...seedContent.blogPosts.flatMap((post) => [...collectRemoteImageUrls(post)]),
   ]);
 
   const currentSettings = await getSiteSettings();
   const currentPages = await getAllPages();
   const currentServices = await getAllServicesWithItems();
+  const currentBlogPosts = await getAllBlogPostsAdmin();
 
   collectRemoteImageUrls(currentSettings).forEach((url) => remoteUrls.add(url));
   currentPages.forEach((page) => collectRemoteImageUrls(page.content).forEach((url) => remoteUrls.add(url)));
   currentServices.forEach((service) => collectRemoteImageUrls(service).forEach((url) => remoteUrls.add(url)));
+  currentBlogPosts.forEach((post) => collectRemoteImageUrls(post).forEach((url) => remoteUrls.add(url)));
 
   const urlMap = new Map();
   for (const url of remoteUrls) {
@@ -1168,6 +1348,11 @@ export async function importRemoteImagesIntoLibrary() {
   for (const service of currentServices) {
     const nextService = replaceImageUrls(service, urlMap);
     await updateService(service.id, nextService);
+  }
+
+  for (const post of currentBlogPosts) {
+    const nextPost = replaceImageUrls(post, urlMap);
+    await updateBlogPost(post.slug, nextPost);
   }
 
   return getImageAssets();

@@ -97,6 +97,18 @@ export interface ImageAsset {
   createdAt?: string;
 }
 
+export interface ImageAssetUsage {
+  resourceType: "settings" | "page" | "service" | "blog";
+  resourceId: string;
+  resourceLabel: string;
+  path: string;
+}
+
+export interface DeleteAdminImageResult {
+  imageAssets: ImageAsset[];
+  replacedUsageCount: number;
+}
+
 async function fetchJson<T>(path: string): Promise<T> {
   const response = await fetch(`${API_BASE}${path}`);
   if (!response.ok) {
@@ -349,6 +361,24 @@ export async function renameAdminImage(token: string, id: number, name: string) 
     method: "PUT",
     headers: { Authorization: `Bearer ${token}` },
     body: JSON.stringify({ name }),
+  });
+}
+
+export async function getAdminImageUsage(token: string, id: number) {
+  return apiRequest<ImageAssetUsage[]>(`/admin/images/${id}/usage`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export async function deleteAdminImage(
+  token: string,
+  id: number,
+  replacementImageId?: number | null,
+) {
+  return apiRequest<DeleteAdminImageResult>(`/admin/images/${id}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ replacementImageId: replacementImageId ?? null }),
   });
 }
 
