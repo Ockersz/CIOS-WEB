@@ -4,3 +4,4 @@
 /.vscode
 .pm2/
 package-lock.json
+/uploads
