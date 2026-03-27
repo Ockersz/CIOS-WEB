@@ -24,6 +24,7 @@ export function Services() {
   const features = page?.content?.greenFeatures || [];
   const cta = page?.content?.cta;
   const heroImage =
+    page?.content?.heroImage ||
     "https://images.unsplash.com/photo-1752097439317-daa5cf0b7dd1?auto=format&fit=crop&w=1920&q=80";
 
   return (

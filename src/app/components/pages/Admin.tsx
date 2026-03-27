@@ -1495,6 +1495,20 @@ function renderPageEditor(
     return (
       <div className="space-y-6">
         {renderHeroFields()}
+        <SectionCard
+          title="Hero Image"
+          description="Background image shown behind the services page header."
+        >
+          <div className="max-w-md">
+            <ImagePickerField label="Services Hero Background Image" value={content.heroImage || ""} onPick={() => {
+              openImagePicker(
+                "Choose services hero background image",
+                content.heroImage || "",
+                (value) => updateContent({ ...content, heroImage: value }),
+              );
+            }} />
+          </div>
+        </SectionCard>
         <SectionCard title="Feature Highlights" description="Small highlight badges shown near the top of the services page.">
           <div className="space-y-4">
             {(content.greenFeatures || []).map((item: any, index: number) => (

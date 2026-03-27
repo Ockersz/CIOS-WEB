@@ -407,6 +407,8 @@ export const seedContent = {
       heroSubtitle: "MAKING THE WORLD A MUCH BETTER PLACE!",
       heroDescription: "Our Wide Area of Services",
       content: {
+        heroImage:
+          "https://images.unsplash.com/photo-1752097439317-daa5cf0b7dd1?auto=format&fit=crop&w=1920&q=80",
         greenFeatures: [
           {
             icon: "Sparkles",
